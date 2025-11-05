@@ -93,68 +93,154 @@ jobs:
           ADMIN_LIST: ${{ secrets.ADMIN_LIST || '' }}
           FILE_LOG_LEVEL: ${{ secrets.FILE_LOG_LEVEL || 'INFO' }}
           TELEGRAM_LOG_LEVEL: ${{ secrets.TELEGRAM_LOG_LEVEL || 'DISABLED' }}
+          NEW_IMAGE: ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}:latest
+          BACKUP_IMAGE: ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}:stable
         with:
           host: ${{ secrets.YC_INSTANCE_IP }}
           username: ${{ secrets.YC_INSTANCE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: TG_TOKEN,LLM_TOKEN,DEBUG_CHAT,MODEL,DEBUG,TABLE_NAME,MAX_CONTEXT,MAX_STORAGE,DELAYED_REMINDERS_HOURS,DELAYED_REMINDERS_MINUTES,TIMEZONE_OFFSET,FROM_TIME,TO_TIME,ADMIN_LIST,FILE_LOG_LEVEL,TELEGRAM_LOG_LEVEL
+          envs: TG_TOKEN,LLM_TOKEN,DEBUG_CHAT,MODEL,DEBUG,TABLE_NAME,MAX_CONTEXT,MAX_STORAGE,DELAYED_REMINDERS_HOURS,DELAYED_REMINDERS_MINUTES,TIMEZONE_OFFSET,FROM_TIME,TO_TIME,ADMIN_LIST,FILE_LOG_LEVEL,TELEGRAM_LOG_LEVEL,NEW_IMAGE,BACKUP_IMAGE
           script: |
-            # Останавливаем и удаляем старый контейнер
-            docker stop empathy-ai-bot 2>/dev/null || true
-            docker rm empathy-ai-bot 2>/dev/null || true
+            set -e  # Остановка при ошибке
             
-            # Обновляем образ
-            docker pull ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}:latest
+            echo "🔄 Начинаем деплой..."
             
             # Создаем директории если их нет
             mkdir -p /opt/empathy-bot/data /opt/empathy-bot/logs
             
-            # Запускаем новый контейнер (миграции применятся автоматически при старте)
-            docker run -d \
-              --name empathy-ai-bot \
-              --restart unless-stopped \
-              -e TG_TOKEN="$TG_TOKEN" \
-              -e LLM_TOKEN="$LLM_TOKEN" \
-              -e DEBUG_CHAT="$DEBUG_CHAT" \
-              -e MODEL="$MODEL" \
-              -e DEBUG="$DEBUG" \
-              -e DATABASE_NAME=/data/users.db \
-              -e TABLE_NAME="$TABLE_NAME" \
-              -e MAX_CONTEXT="$MAX_CONTEXT" \
-              -e MAX_STORAGE="$MAX_STORAGE" \
-              -e DELAYED_REMINDERS_HOURS="$DELAYED_REMINDERS_HOURS" \
-              -e DELAYED_REMINDERS_MINUTES="$DELAYED_REMINDERS_MINUTES" \
-              -e TIMEZONE_OFFSET="$TIMEZONE_OFFSET" \
-              -e FROM_TIME="$FROM_TIME" \
-              -e TO_TIME="$TO_TIME" \
-              -e ADMIN_LIST="$ADMIN_LIST" \
-              -e FILE_LOG_LEVEL="$FILE_LOG_LEVEL" \
-              -e TELEGRAM_LOG_LEVEL="$TELEGRAM_LOG_LEVEL" \
-              -v /opt/empathy-bot/data:/data \
-              -v /opt/empathy-bot/logs:/app/logs \
-              ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}:latest
+            # Сохраняем информацию о текущем работающем контейнере
+            CURRENT_IMAGE=""
+            if docker ps --filter name=empathy-ai-bot --format "{{.Image}}" | grep -q .; then
+              CURRENT_IMAGE=$(docker ps --filter name=empathy-ai-bot --format "{{.Image}}")
+              echo "📸 Текущий образ: $CURRENT_IMAGE"
+              
+              # Тегируем текущий образ как stable (резервная копия)
+              docker tag "$CURRENT_IMAGE" "$BACKUP_IMAGE" || echo "⚠️  Не удалось создать backup тег"
+            else
+              echo "⚠️  Текущий контейнер не найден"
+            fi
             
-            # Ждем запуска
-            sleep 5
+            # Обновляем новый образ
+            echo "⬇️  Скачиваем новый образ..."
+            docker pull "$NEW_IMAGE"
             
-            # Проверяем статус
-            docker ps --filter name=empathy-ai-bot
-            docker logs empathy-ai-bot --tail=50
+            # Останавливаем текущий контейнер
+            echo "⏸️  Останавливаем текущий контейнер..."
+            docker stop empathy-ai-bot 2>/dev/null || true
+            docker rm empathy-ai-bot 2>/dev/null || true
+            
+            # Функция для запуска контейнера
+            start_container() {
+              local IMAGE=$1
+              echo "🚀 Запускаем контейнер с образом: $IMAGE"
+              
+              docker run -d \
+                --name empathy-ai-bot \
+                --restart unless-stopped \
+                -e TG_TOKEN="$TG_TOKEN" \
+                -e LLM_TOKEN="$LLM_TOKEN" \
+                -e DEBUG_CHAT="$DEBUG_CHAT" \
+                -e MODEL="$MODEL" \
+                -e DEBUG="$DEBUG" \
+                -e DATABASE_NAME=/data/users.db \
+                -e TABLE_NAME="$TABLE_NAME" \
+                -e MAX_CONTEXT="$MAX_CONTEXT" \
+                -e MAX_STORAGE="$MAX_STORAGE" \
+                -e DELAYED_REMINDERS_HOURS="$DELAYED_REMINDERS_HOURS" \
+                -e DELAYED_REMINDERS_MINUTES="$DELAYED_REMINDERS_MINUTES" \
+                -e TIMEZONE_OFFSET="$TIMEZONE_OFFSET" \
+                -e FROM_TIME="$FROM_TIME" \
+                -e TO_TIME="$TO_TIME" \
+                -e ADMIN_LIST="$ADMIN_LIST" \
+                -e FILE_LOG_LEVEL="$FILE_LOG_LEVEL" \
+                -e TELEGRAM_LOG_LEVEL="$TELEGRAM_LOG_LEVEL" \
+                -v /opt/empathy-bot/data:/data \
+                -v /opt/empathy-bot/logs:/app/logs \
+                "$IMAGE"
+            }
+            
+            # Запускаем новый контейнер
+            if start_container "$NEW_IMAGE"; then
+              echo "✅ Контейнер запущен"
+            else
+              echo "❌ Ошибка запуска контейнера"
+              exit 1
+            fi
+            
+            # Ждем запуска и миграций
+            echo "⏳ Ожидаем запуска (15 секунд)..."
+            sleep 15
+            
+            # Проверяем что контейнер работает
+            if docker ps --filter name=empathy-ai-bot --filter status=running | grep -q empathy-ai-bot; then
+              echo "✅ Контейнер работает"
+              
+              # Проверяем логи на наличие критических ошибок
+              if docker logs empathy-ai-bot 2>&1 | tail -50 | grep -iE "CRITICAL|ERROR.*Failed to|Exception.*startup"; then
+                echo "❌ Обнаружены критические ошибки в логах!"
+                
+                # Откатываемся к стабильной версии
+                if [ -n "$CURRENT_IMAGE" ]; then
+                  echo "🔙 Откатываемся к предыдущей версии: $CURRENT_IMAGE"
+                  docker stop empathy-ai-bot 2>/dev/null || true
+                  docker rm empathy-ai-bot 2>/dev/null || true
+                  start_container "$CURRENT_IMAGE"
+                  sleep 10
+                  echo "🔄 Откат выполнен. Проверьте логи:"
+                  docker logs empathy-ai-bot --tail=30
+                  exit 1
+                else
+                  echo "⚠️  Нет предыдущей версии для отката!"
+                  docker logs empathy-ai-bot --tail=50
+                  exit 1
+                fi
+              else
+                echo "✅ Деплой успешен!"
+                docker logs empathy-ai-bot --tail=30
+                echo "📊 Статус контейнера:"
+                docker ps --filter name=empathy-ai-bot
+              fi
+            else
+              echo "❌ Контейнер не работает!"
+              
+              # Откатываемся к стабильной версии
+              if [ -n "$CURRENT_IMAGE" ]; then
+                echo "🔙 Откатываемся к предыдущей версии: $CURRENT_IMAGE"
+                docker stop empathy-ai-bot 2>/dev/null || true
+                docker rm empathy-ai-bot 2>/dev/null || true
+                start_container "$CURRENT_IMAGE"
+                sleep 10
+                echo "🔄 Откат выполнен"
+                docker logs empathy-ai-bot --tail=30
+              else
+                echo "⚠️  Нет предыдущей версии для отката!"
+                docker logs empathy-ai-bot --tail=50
+              fi
+              exit 1
+            fi
       
-      - name: Verify deployment
+      - name: Final verification
+        if: always()
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.YC_INSTANCE_IP }}
           username: ${{ secrets.YC_INSTANCE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Проверяем, что контейнер работает
+            echo "🔍 Финальная проверка..."
+            
             if docker ps --filter name=empathy-ai-bot --filter status=running | grep -q empathy-ai-bot; then
-              echo "✅ Деплой успешен!"
+              echo "✅ Бот работает"
+              echo ""
+              echo "📊 Информация о контейнере:"
+              docker ps --filter name=empathy-ai-bot --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+              echo ""
+              echo "📝 Последние логи:"
               docker logs empathy-ai-bot --tail=20
-              exit 0
             else
-              echo "❌ Контейнер не запустился"
-              docker logs empathy-ai-bot --tail=100
+              echo "❌ ВНИМАНИЕ: Бот не работает!"
+              echo ""
+              echo "📝 Последние логи:"
+              docker logs empathy-ai-bot --tail=50 2>&1 || echo "Логи недоступны"
               exit 1
             fi
