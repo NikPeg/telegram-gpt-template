@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 import aiosqlite
 from dotenv import load_dotenv
@@ -112,7 +112,15 @@ class User:
             await cursor.close()
 
     async def update_prompt(self, role, new_request):
-        new_entry = {"role": role, "content": new_request}
+        # Получаем текущее время с учетом часового пояса
+        current_time = datetime.now(timezone(timedelta(hours=TIMEZONE_OFFSET)))
+        timestamp = current_time.strftime("%Y-%m-%d %H:%M:%S")
+
+        new_entry = {
+            "role": role,
+            "content": new_request,
+            "timestamp": timestamp
+        }
         self.prompt.append(new_entry)
         if len(self.prompt) > MAX_STORAGE:
             self.prompt = self.prompt[-MAX_STORAGE:]

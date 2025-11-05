@@ -124,7 +124,8 @@ empathy-ai-bot/
 │   ├── quickstart.md          # Быстрый старт за 3 минуты
 │   ├── deployment.md          # Полное руководство по развертыванию
 │   ├── ci-cd.md              # Настройка автодеплоя
-│   └── logging.md            # Настройка и уровни логирования
+│   ├── logging.md            # Настройка и уровни логирования
+│   └── migrations.md         # Система миграций БД
 ├── handlers/                   # Обработчики команд и сообщений
 │   ├── __init__.py
 │   ├── user_handlers.py       # Пользовательские команды
@@ -135,6 +136,10 @@ empathy-ai-bot/
 │   ├── llm_client.py          # Клиент OpenRouter API
 │   ├── llm_service.py         # Работа с LLM
 │   └── reminder_service.py    # Логика напоминаний
+├── migrations/                 # Миграции базы данных
+│   ├── __init__.py
+│   ├── migration_manager.py   # Менеджер миграций
+│   └── migration_001_*.py     # Файлы миграций
 ├── data/                       # База данных (создается автоматически)
 ├── main.py                     # Точка входа приложения
 ├── config.py                   # Конфигурация и настройки
@@ -162,12 +167,32 @@ empathy-ai-bot/
 |------|-----|----------|
 | `id` | INTEGER | Telegram chat ID (PRIMARY KEY) |
 | `name` | TEXT | Username пользователя |
-| `prompt` | JSON | История диалога |
+| `prompt` | JSON | История диалога (массив сообщений) |
 | `remind_of_yourself` | TEXT | Дата/время следующего напоминания |
 | `sub_lvl` | INTEGER | Уровень подписки |
 | `sub_id` | TEXT | ID подписки |
 | `sub_period` | INTEGER | Период подписки |
 | `is_admin` | INTEGER | Флаг администратора |
+
+### Структура сообщения в истории:
+
+Каждое сообщение в поле `prompt` имеет следующую структуру:
+
+```json
+{
+  "role": "user",
+  "content": "Текст сообщения",
+  "timestamp": "2025-11-05 15:30:45"
+}
+```
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `role` | string | Роль: `"user"` или `"assistant"` |
+| `content` | string | Текст сообщения |
+| `timestamp` | string\|null | Время отправки с учетом TIMEZONE_OFFSET (или `null` для старых сообщений) |
+
+**Примечание:** Старые сообщения, созданные до миграции, имеют `timestamp: null`.
 
 ## ⚙️ Конфигурация
 

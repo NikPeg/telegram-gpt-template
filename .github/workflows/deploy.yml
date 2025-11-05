@@ -2,194 +2,111 @@ name: Deploy to Yandex Cloud
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 env:
   REGISTRY: cr.yandex
-  IMAGE_NAME: empathy-ai-bot
+  IMAGE_NAME: empathy-bot
 
 jobs:
   test:
+    name: Run Tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.13'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-    
-    - name: Check Python syntax
-      run: |
-        python -m py_compile main.py config.py bot_instance.py filters.py states.py utils.py database.py
-        python -m py_compile handlers/*.py
-        python -m py_compile services/*.py
-    
-    - name: Validate JSON files
-      run: |
-        python -c "import json; json.load(open('config/prompts.json'))"
-        python -c "import json; json.load(open('config/messages.json'))"
-    
-    - name: Run Ruff linter
-      run: |
-        ruff check .
-    
-    - name: Run Ruff formatter check
-      run: |
-        ruff format --check .
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      
+      - name: Run linter
+        run: ruff check .
+      
+      - name: Validate JSON configs
+        run: |
+          python -c "import json; json.load(open('config/prompts.json'))"
+          python -c "import json; json.load(open('config/messages.json'))"
 
   build-and-push:
+    name: Build and Push Docker Image
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    outputs:
-      image-digest: ${{ steps.build.outputs.digest }}
-      deployment-status: "success"
-    
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Log in to Yandex Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: json_key
-        password: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
-    
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
-    
-    - name: Build and push Docker image
-      id: build
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        platforms: linux/amd64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - uses: actions/checkout@v4
+      
+      - name: Login to Yandex Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: cr.yandex
+          username: json_key
+          password: ${{ secrets.YC_SA_JSON_KEY }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   deploy:
+    name: Deploy to Server
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Install Yandex Cloud CLI
-      run: |
-        curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
-        echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
-    
-    - name: Authenticate with Yandex Cloud
-      run: |
-        echo '${{ secrets.YC_SA_JSON_CREDENTIALS }}' > key.json
-        yc config profile create github-actions
-        yc config set service-account-key key.json
-        yc config set cloud-id ${{ secrets.YC_CLOUD_ID }}
-        yc config set folder-id ${{ secrets.YC_FOLDER_ID }}
-        rm key.json
-    
-    - name: Deploy to Yandex Cloud
-      run: |
-        # Create deployment script
-        cat > deploy.sh << 'EOF'
-        #!/bin/bash
-        set -e
-        
-        # Variables
-        IMAGE_URL="${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}:latest"
-        CONTAINER_NAME="empathy-ai-bot"
-        
-        # Stop and remove existing container
-        docker stop $CONTAINER_NAME || true
-        docker rm $CONTAINER_NAME || true
-        
-        # Create directories
-        mkdir -p /opt/empathy-bot/data
-        
-        # Login to Yandex Container Registry
-        echo "Logging in to Yandex Container Registry..."
-        echo '${{ secrets.YC_SA_JSON_CREDENTIALS }}' | docker login --username json_key --password-stdin ${{ env.REGISTRY }}
-        
-        # Pull new image
-        docker pull $IMAGE_URL
-        
-        # Set proper permissions
-        chmod -R 755 /opt/empathy-bot/data /opt/empathy-bot/logs
-        
-        # Run new container
-        docker run -d \
-          --name $CONTAINER_NAME \
-          --restart unless-stopped \
-          -e TG_TOKEN="${{ secrets.TG_TOKEN }}" \
-          -e LLM_TOKEN="${{ secrets.LLM_TOKEN }}" \
-          -e MODEL="${{ secrets.MODEL || 'google/gemini-2.0-flash-exp:free' }}" \
-          -e DEBUG="${{ secrets.DEBUG || '0' }}" \
-          -e DEBUG_CHAT="${{ secrets.DEBUG_CHAT }}" \
-          -e DATABASE_NAME="/data/users.db" \
-          -e TABLE_NAME="${{ secrets.TABLE_NAME || 'users' }}" \
-          -e MAX_CONTEXT="${{ secrets.MAX_CONTEXT || '20' }}" \
-          -e DELAYED_REMINDERS_HOURS="${{ secrets.DELAYED_REMINDERS_HOURS || '2' }}" \
-          -e DELAYED_REMINDERS_MINUTES="${{ secrets.DELAYED_REMINDERS_MINUTES || '0' }}" \
-          -e TIMEZONE_OFFSET="${{ secrets.TIMEZONE_OFFSET || '3' }}" \
-          -e FROM_TIME="${{ secrets.FROM_TIME || '9' }}" \
-          -e TO_TIME="${{ secrets.TO_TIME || '23' }}" \
-          -e ADMIN_LIST="${{ secrets.ADMIN_LIST || '' }}" \
-          -v /opt/empathy-bot/data:/data \
-          $IMAGE_URL
-        
-        # Clean up old images
-        docker image prune -f
-        
-        # Logout from registry for security
-        docker logout ${{ env.REGISTRY }}
-        
-        echo "Deployment completed successfully!"
-        EOF
-        
-        # Make script executable
-        chmod +x deploy.sh
-        
-        # Setup SSH
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
-        ssh-keyscan -H ${{ secrets.YC_INSTANCE_IP }} >> ~/.ssh/known_hosts
-        
-        # Copy and execute deployment script on the server
-        scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy.sh ${{ secrets.YC_INSTANCE_USER }}@${{ secrets.YC_INSTANCE_IP }}:/tmp/
-        
-        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.YC_INSTANCE_USER }}@${{ secrets.YC_INSTANCE_IP }} \
-          "chmod +x /tmp/deploy.sh && sudo /tmp/deploy.sh && rm /tmp/deploy.sh"
-    
-    - name: Verify deployment
-      run: |
-        sleep 30
-        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.YC_INSTANCE_USER }}@${{ secrets.YC_INSTANCE_IP }} \
-          "docker ps | grep empathy-ai-bot && docker logs --tail 20 empathy-ai-bot"
-
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            cd /opt/empathy-bot
+            
+            # Останавливаем контейнер
+            docker-compose down
+            
+            # Обновляем образ
+            docker pull ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}:latest
+            
+            # Запускаем контейнер (миграции применятся автоматически при старте)
+            docker-compose up -d
+            
+            # Ждем запуска
+            sleep 5
+            
+            # Проверяем статус
+            docker-compose ps
+            docker-compose logs --tail=50
+      
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            cd /opt/empathy-bot
+            
+            # Проверяем, что контейнер работает
+            if docker-compose ps | grep -q "Up"; then
+              echo "✅ Деплой успешен!"
+              exit 0
+            else
+              echo "❌ Контейнер не запустился"
+              docker-compose logs --tail=100
+              exit 1
+            fi

@@ -7,6 +7,7 @@ import asyncio
 import contextlib
 
 import database
+from migrations.migration_manager import run_migrations
 
 # Импортируем все обработчики (чтобы они зарегистрировались)
 # ВАЖНО: порядок имеет значение! Сначала специфичные (команды), потом общие
@@ -26,6 +27,9 @@ async def main():
     """Главная функция запуска бота."""
     # Инициализация базы данных
     db_status = await database.check_db()
+
+    # Применяем миграции
+    await run_migrations()
 
     # Добавляем Telegram handler после инициализации бота
     add_telegram_handler(logger, bot)
