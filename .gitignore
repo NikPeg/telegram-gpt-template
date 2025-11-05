@@ -78,3 +78,4 @@ cython_debug/
 *.bak
 *.tmp
 
+key.json
