@@ -2,6 +2,7 @@
 Главный файл приложения - точка входа для запуска бота.
 """
 
+# ruff: noqa: I001 - порядок импортов handlers критичен для работы бота
 import asyncio
 import contextlib
 
@@ -11,7 +12,13 @@ import database
 # ВАЖНО: порядок имеет значение! Сначала специфичные (команды), потом общие
 from bot_instance import bot, dp
 from config import DEBUG, DEBUG_CHAT, logger
-from handlers import user_handlers, admin_handlers, message_handlers  # noqa: F401
+
+# isort: off - не сортировать этот блок, порядок критичен!
+from handlers import user_handlers  # noqa: F401
+from handlers import admin_handlers  # noqa: F401
+from handlers import message_handlers  # noqa: F401
+# isort: on
+
 from services.reminder_service import reminder_loop
 
 

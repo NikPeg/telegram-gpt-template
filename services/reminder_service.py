@@ -61,7 +61,7 @@ async def send_reminder_to_user(user_id: int):
     # Заменяем плейсхолдеры в REMINDER_PROMPT
     reminder_content = REMINDER_PROMPT.replace("{CURRENTDATE}", current_date)
     reminder_content = reminder_content.replace("{USERNAME}", username_replacement)
-    
+
     # Заменяем плейсхолдеры в DEFAULT_PROMPT
     default_content = DEFAULT_PROMPT.replace("{CURRENTDATE}", current_date)
     default_content = default_content.replace("{USERNAME}", username_replacement)

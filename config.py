@@ -50,12 +50,12 @@ with open("config/messages.json", encoding="utf-8") as f:
 def setup_logger():
     """Настройка логирования с поддержкой уровней из .env"""
     logger = logging.getLogger(__name__)
-    
+
     # Получаем уровни логирования из переменных окружения
     log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
     console_log_level_str = os.environ.get("CONSOLE_LOG_LEVEL", log_level_str).upper()
     file_log_level_str = os.environ.get("FILE_LOG_LEVEL", "DEBUG").upper()
-    
+
     # Преобразуем строки в уровни логирования
     log_levels = {
         "DEBUG": logging.DEBUG,
@@ -64,11 +64,11 @@ def setup_logger():
         "ERROR": logging.ERROR,
         "CRITICAL": logging.CRITICAL,
     }
-    
+
     main_level = log_levels.get(log_level_str, logging.INFO)
     console_level = log_levels.get(console_log_level_str, logging.INFO)
     file_level = log_levels.get(file_log_level_str, logging.DEBUG)
-    
+
     # Устанавливаем минимальный уровень, чтобы handlers могли фильтровать сами
     logger.setLevel(min(main_level, console_level, file_level))
 
@@ -88,7 +88,7 @@ def setup_logger():
 
     logger.addHandler(ch)
     logger.addHandler(fh)
-    
+
     # Выводим информацию о настройках логирования
     logger.info(f"Logger initialized: LOG_LEVEL={log_level_str}, CONSOLE={console_log_level_str}, FILE={file_log_level_str}")
 

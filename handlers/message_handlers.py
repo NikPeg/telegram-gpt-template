@@ -23,7 +23,7 @@ async def handle_text_message(message: types.Message):
 
     logger.info(f"USER{message.chat.id}TOLLM:{message.text}")
     await forward_to_debug(message.chat.id, message.message_id)
-    
+
     # Обновляем имя пользователя в базе данных (если изменилось)
     user_obj = User(message.chat.id)
     await user_obj.get_from_db()
