@@ -128,17 +128,25 @@ def setup_logger():
 
     # File handler
     if file_level < 100:  # Если не DISABLED
+        # Путь к файлу логов (можно настроить через переменную окружения)
+        log_file_path = os.environ.get("LOG_FILE_PATH", "/app/logs/debug.log")
+        log_dir = os.path.dirname(log_file_path)
+
         # Создаем директорию для логов если её нет
-        log_dir = os.path.dirname("debug.log")
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir, exist_ok=True)
 
-        # Создаем файл лога если его нет
-        if not os.path.exists("debug.log"):
-            open("debug.log", "a", encoding="utf8").close()
-
-        fh = logging.handlers.RotatingFileHandler(
-            "debug.log", maxBytes=1024 * 1024, backupCount=5, encoding="utf8"
+        # Используем TimedRotatingFileHandler для ротации по времени
+        # when='midnight' - новый файл каждую полночь
+        # interval=1 - каждые 1 день
+        # backupCount=1 - хранить 1 старый файл (итого логи за 2 суток)
+        fh = logging.handlers.TimedRotatingFileHandler(
+            log_file_path,
+            when="midnight",
+            interval=1,
+            backupCount=1,
+            encoding="utf8",
+            utc=False,  # Использовать локальное время
         )
         fh.setLevel(file_level)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")

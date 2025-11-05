@@ -8,7 +8,7 @@ services:
     volumes:
       # Монтируем директорию для сохранения базы данных и логов
       - ./data:/data
-      - ./debug.log:/app/debug.log
+      - ./logs:/app/logs
     environment:
       - DATABASE_NAME=/data/users.db
     # Если нужен healthcheck
