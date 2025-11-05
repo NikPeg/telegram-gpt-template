@@ -25,7 +25,7 @@ async def keep_typing(chat_id: int, duration: int = 30):
 
 async def forward_to_debug(message_chat_id: int, message_id: int):
     """
-    Пересылает сообщение в отладочный чат.
+    Пересылает сообщение в отладочный чат с меткой USER ID.
 
     Args:
         message_chat_id: ID чата с сообщением
@@ -33,6 +33,9 @@ async def forward_to_debug(message_chat_id: int, message_id: int):
     """
     # Игнорируем ошибки пересылки (например, если бот заблокирован в DEBUG_CHAT)
     with contextlib.suppress(Exception):
+        # Отправляем метку с USER ID перед пересылкой
+        await bot.send_message(DEBUG_CHAT, f"USER{message_chat_id}")
+        # Пересылаем сообщение
         await bot.forward_message(
             chat_id=DEBUG_CHAT, from_chat_id=message_chat_id, message_id=message_id
         )

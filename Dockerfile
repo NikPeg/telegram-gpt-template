@@ -3,10 +3,12 @@ FROM python:3.13-slim
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Устанавливаем системные зависимости для сборки пакетов
+# Устанавливаем системные зависимости для сборки пакетов и matplotlib
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
+    libfreetype6-dev \
+    libpng-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Копируем файл зависимостей

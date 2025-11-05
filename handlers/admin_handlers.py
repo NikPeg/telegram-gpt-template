@@ -2,15 +2,18 @@
 Обработчики администраторских команд.
 """
 
+import re
+
 from aiogram import types
 from aiogram.filters.command import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardRemove
+from aiogram.types import BufferedInputFile, ReplyKeyboardRemove
 
 from bot_instance import bot, dp
 from config import DEBUG_CHAT, MESSAGES
 from database import User
 from filters import UserIsAdmin
+from services.stats_service import generate_user_stats
 from states import AdminDispatch, AdminDispatchAll
 
 
@@ -93,3 +96,78 @@ async def cmd_dispatch_all(message: types.Message, state: FSMContext):
         MESSAGES["adminka_dispatch_all"], reply_markup=ReplyKeyboardRemove()
     )
     await state.set_state(AdminDispatchAll.input_text)
+
+
+@dp.message(UserIsAdmin(), Command("stats"))
+async def cmd_stats(message: types.Message):
+    """Команда /stats - просмотр статистики пользователя или всех пользователей."""
+    user_id = None
+
+    # Проверяем, является ли сообщение ответом на другое сообщение
+    if message.reply_to_message and message.reply_to_message.text:
+        # Пытаемся извлечь USER ID из текста сообщения
+        replied_text = message.reply_to_message.text
+        match = re.search(r"USER(\d+)", replied_text)
+        if match:
+            user_id = int(match.group(1))
+
+    # Отправляем сообщение о начале обработки
+    if user_id:
+        status_msg = await message.answer(
+            f"⏳ Собираю статистику для пользователя USER{user_id}..."
+        )
+    else:
+        status_msg = await message.answer(
+            "⏳ Собираю статистику по всем пользователям..."
+        )
+
+    try:
+        # Генерируем статистику
+        hourly_graph, weekly_graph, total_messages = await generate_user_stats(user_id)
+
+        if hourly_graph is None:
+            await status_msg.edit_text(
+                "❌ Нет данных для отображения статистики. "
+                "Возможно, пользователь не отправлял сообщений."
+            )
+            return
+
+        # Формируем текст с результатами
+        if user_id:
+            result_text = (
+                f"📊 Статистика пользователя USER{user_id}\n"
+                f"Всего сообщений: {total_messages}"
+            )
+        else:
+            result_text = (
+                f"📊 Общая статистика всех пользователей\n"
+                f"Всего сообщений: {total_messages}"
+            )
+
+        # Отправляем текстовое сообщение
+        await status_msg.edit_text(result_text)
+
+        # Отправляем графики
+        hourly_file = BufferedInputFile(
+            hourly_graph.read(), filename="hourly_stats.png"
+        )
+        weekly_file = BufferedInputFile(
+            weekly_graph.read(), filename="weekly_stats.png"
+        )
+
+        await message.answer_photo(
+            hourly_file, caption="Статистика по часам суток"
+        )
+        await message.answer_photo(
+            weekly_file, caption="Статистика по дням недели"
+        )
+
+    except Exception as e:
+        await status_msg.edit_text(
+            f"❌ Ошибка при генерации статистики: {e}"
+        )
+        # Логируем ошибку
+        await bot.send_message(
+            DEBUG_CHAT,
+            f"Ошибка в cmd_stats: {e}"
+        )
