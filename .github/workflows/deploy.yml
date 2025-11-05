@@ -76,10 +76,28 @@ jobs:
       
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          LLM_TOKEN: ${{ secrets.LLM_TOKEN }}
+          DEBUG_CHAT: ${{ secrets.DEBUG_CHAT }}
+          MODEL: ${{ secrets.MODEL || 'google/gemini-2.0-flash-exp:free' }}
+          DEBUG: ${{ secrets.DEBUG || '0' }}
+          TABLE_NAME: ${{ secrets.TABLE_NAME || 'users' }}
+          MAX_CONTEXT: ${{ secrets.MAX_CONTEXT || '20' }}
+          MAX_STORAGE: ${{ secrets.MAX_STORAGE || '100' }}
+          DELAYED_REMINDERS_HOURS: ${{ secrets.DELAYED_REMINDERS_HOURS || '2' }}
+          DELAYED_REMINDERS_MINUTES: ${{ secrets.DELAYED_REMINDERS_MINUTES || '0' }}
+          TIMEZONE_OFFSET: ${{ secrets.TIMEZONE_OFFSET || '3' }}
+          FROM_TIME: ${{ secrets.FROM_TIME || '9' }}
+          TO_TIME: ${{ secrets.TO_TIME || '23' }}
+          ADMIN_LIST: ${{ secrets.ADMIN_LIST || '' }}
+          FILE_LOG_LEVEL: ${{ secrets.FILE_LOG_LEVEL || 'INFO' }}
+          TELEGRAM_LOG_LEVEL: ${{ secrets.TELEGRAM_LOG_LEVEL || 'DISABLED' }}
         with:
           host: ${{ secrets.YC_INSTANCE_IP }}
           username: ${{ secrets.YC_INSTANCE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: TG_TOKEN,LLM_TOKEN,DEBUG_CHAT,MODEL,DEBUG,TABLE_NAME,MAX_CONTEXT,MAX_STORAGE,DELAYED_REMINDERS_HOURS,DELAYED_REMINDERS_MINUTES,TIMEZONE_OFFSET,FROM_TIME,TO_TIME,ADMIN_LIST,FILE_LOG_LEVEL,TELEGRAM_LOG_LEVEL
           script: |
             # Останавливаем и удаляем старый контейнер
             docker stop empathy-ai-bot 2>/dev/null || true
@@ -88,15 +106,30 @@ jobs:
             # Обновляем образ
             docker pull ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}:latest
             
-            # Загружаем переменные окружения (должен быть файл .env на сервере)
-            cd /opt/empathy-bot
+            # Создаем директории если их нет
+            mkdir -p /opt/empathy-bot/data /opt/empathy-bot/logs
             
             # Запускаем новый контейнер (миграции применятся автоматически при старте)
             docker run -d \
               --name empathy-ai-bot \
               --restart unless-stopped \
-              --env-file .env \
+              -e TG_TOKEN="$TG_TOKEN" \
+              -e LLM_TOKEN="$LLM_TOKEN" \
+              -e DEBUG_CHAT="$DEBUG_CHAT" \
+              -e MODEL="$MODEL" \
+              -e DEBUG="$DEBUG" \
               -e DATABASE_NAME=/data/users.db \
+              -e TABLE_NAME="$TABLE_NAME" \
+              -e MAX_CONTEXT="$MAX_CONTEXT" \
+              -e MAX_STORAGE="$MAX_STORAGE" \
+              -e DELAYED_REMINDERS_HOURS="$DELAYED_REMINDERS_HOURS" \
+              -e DELAYED_REMINDERS_MINUTES="$DELAYED_REMINDERS_MINUTES" \
+              -e TIMEZONE_OFFSET="$TIMEZONE_OFFSET" \
+              -e FROM_TIME="$FROM_TIME" \
+              -e TO_TIME="$TO_TIME" \
+              -e ADMIN_LIST="$ADMIN_LIST" \
+              -e FILE_LOG_LEVEL="$FILE_LOG_LEVEL" \
+              -e TELEGRAM_LOG_LEVEL="$TELEGRAM_LOG_LEVEL" \
               -v /opt/empathy-bot/data:/data \
               -v /opt/empathy-bot/logs:/app/logs \
               ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}:latest
