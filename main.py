@@ -18,13 +18,13 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
-from openrouters import send_request_to_openrouter
+from llm_client import send_request_to_openrouter
 
 import telegramify_markdown 
 from telegramify_markdown import customize
 
-import user_db  
-from user_db import User
+import database  
+from database import User
 
 
 load_dotenv()
@@ -45,11 +45,11 @@ if ADMIN_LIST_STR:
 else:
     ADMIN_LIST = set()
 
-with open("prompts.json", encoding="utf-8") as ofile:
+with open("config/prompts.json", encoding="utf-8") as ofile:
     PROMPTS = json.load(ofile)
     DEFAULT_PROMPT = PROMPTS["DEFAULT_PROMPT"]
     REMINDER_PROMPT = PROMPTS["REMINDER_PROMPT"]
-with open("messages.json", encoding="utf-8") as ofile:
+with open("config/messages.json", encoding="utf-8") as ofile:
     MESSAGES = json.load(ofile)
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ class ADMINKA_despatch_all(StatesGroup):
 class UserNotInDB(Filter):
     async def __call__(self, message: types.Message) -> bool:
         user_id = message.chat.id
-        return not await user_db.user_exists(user_id)
+        return not await database.user_exists(user_id)
 
 
 class UserHaveSubLevel(Filter):
@@ -337,7 +337,7 @@ async def LLM_request(message: types.Message):
         await bot.send_message(DEBUG_CHAT, f"LLM{message.chat.id} - {e}")
         typing_task.cancel()
     typing_task.cancel()
-    user.remind_of_yourself = await user_db.time_after(
+    user.remind_of_yourself = await database.time_after(
         DELAYED_REMINDERS_HOURS,
         DELAYED_REMINDERS_MINUTES,
         TIMEZONE_OFFSET,
@@ -353,7 +353,7 @@ async def unknown_message(message: types.Message):
     await message.answer(MESSAGES["unknown_message"])
 
 async def reminder():
-    for id in await user_db.get_past_dates():
+    for id in await database.get_past_dates():
         user = User(id)
         await user.get_from_db()
         if user.prompt:
@@ -409,7 +409,7 @@ async def reminder():
                 )
                 start += 4096
                 await f_debug(id, generated_message.message_id)
-        user.remind_of_yourself = await user_db.time_after(
+        user.remind_of_yourself = await database.time_after(
             DELAYED_REMINDERS_HOURS,
             DELAYED_REMINDERS_MINUTES,
             TIMEZONE_OFFSET,
@@ -435,7 +435,7 @@ async def reminder_loop():
 
 
 async def main():
-    print(await user_db.check_db())
+    print(await database.check_db())
     print("Основная часть запущена")
     print("Нажмите Ctrl-C для остановки бота\n")
     

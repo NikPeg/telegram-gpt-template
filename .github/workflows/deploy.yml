@@ -28,12 +28,12 @@ jobs:
     
     - name: Check Python syntax
       run: |
-        python -m py_compile main.py openrouters.py user_db.py
+        python -m py_compile main.py llm_client.py database.py
     
     - name: Validate JSON files
       run: |
-        python -c "import json; json.load(open('prompts.json'))"
-        python -c "import json; json.load(open('messages.json'))"
+        python -c "import json; json.load(open('config/prompts.json'))"
+        python -c "import json; json.load(open('config/messages.json'))"
 
   build-and-push:
     needs: test

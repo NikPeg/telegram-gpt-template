@@ -18,10 +18,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Копируем код приложения
 COPY main.py .
-COPY openrouters.py .
-COPY user_db.py .
-COPY prompts.json .
-COPY messages.json .
+COPY llm_client.py .
+COPY database.py .
+COPY config/ ./config/
 
 # Создаем директорию для базы данных и логов
 RUN mkdir -p /data

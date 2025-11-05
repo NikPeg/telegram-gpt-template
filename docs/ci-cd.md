@@ -139,9 +139,9 @@ exit
 | `YC_REGISTRY_ID` | ID Container Registry | `yc container registry list` |
 | `YC_CLOUD_ID` | ID облака | `yc config list` |
 | `YC_FOLDER_ID` | ID каталога | `yc config list` |
-| `YC_INSTANCE_IP` | IP адрес сервера | `yc compute instance get ...` |
-| `YC_INSTANCE_USER` | Пользователь SSH | Обычно `ubuntu` |
-| `SSH_PRIVATE_KEY` | Приватный SSH ключ | `cat ~/.ssh/id_rsa` |
+| `YC_INSTANCE_IP` | **Публичный** IP адрес сервера | `yc compute instance get <name>` (поле `one_to_one_nat.address`) |
+| `YC_INSTANCE_USER` | Пользователь SSH на сервере | Для YC обычно `yc-user` или имя пользователя из метаданных |
+| `SSH_PRIVATE_KEY` | Приватный SSH ключ | Файл из `~/.ssh/` (например `yc-organization-id-...-<user>`) |
 | `TG_TOKEN` | Токен Telegram бота | @BotFather |
 | `LLM_TOKEN` | Токен OpenRouter | https://openrouter.ai/ |
 | `DEBUG_CHAT` | ID чата для отладки | @userinfobot |
