@@ -48,13 +48,33 @@ with open("config/messages.json", encoding="utf-8") as f:
 
 
 def setup_logger():
-    """Настройка логирования."""
+    """Настройка логирования с поддержкой уровней из .env"""
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
+    
+    # Получаем уровни логирования из переменных окружения
+    log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
+    console_log_level_str = os.environ.get("CONSOLE_LOG_LEVEL", log_level_str).upper()
+    file_log_level_str = os.environ.get("FILE_LOG_LEVEL", "DEBUG").upper()
+    
+    # Преобразуем строки в уровни логирования
+    log_levels = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL,
+    }
+    
+    main_level = log_levels.get(log_level_str, logging.INFO)
+    console_level = log_levels.get(console_log_level_str, logging.INFO)
+    file_level = log_levels.get(file_log_level_str, logging.DEBUG)
+    
+    # Устанавливаем минимальный уровень, чтобы handlers могли фильтровать сами
+    logger.setLevel(min(main_level, console_level, file_level))
 
     # Console handler
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
+    ch.setLevel(console_level)
     formatter_console = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     ch.setFormatter(formatter_console)
 
@@ -62,12 +82,15 @@ def setup_logger():
     fh = logging.handlers.RotatingFileHandler(
         "debug.log", maxBytes=1024 * 1024, backupCount=5, encoding="utf8"
     )
-    fh.setLevel(logging.DEBUG)
+    fh.setLevel(file_level)
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     fh.setFormatter(formatter)
 
     logger.addHandler(ch)
     logger.addHandler(fh)
+    
+    # Выводим информацию о настройках логирования
+    logger.info(f"Logger initialized: LOG_LEVEL={log_level_str}, CONSOLE={console_log_level_str}, FILE={file_log_level_str}")
 
     return logger
 

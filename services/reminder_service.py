@@ -24,6 +24,7 @@ from config import (
 )
 from database import User
 from services.llm_client import send_request_to_openrouter
+from services.llm_service import log_prompt
 from utils import forward_to_debug
 
 
@@ -72,6 +73,9 @@ async def send_reminder_to_user(user_id: int):
         }
     )
     prompt_for_request.insert(0, {"role": "system", "content": default_content})
+
+    # Логируем промпт перед отправкой
+    log_prompt(user_id, prompt_for_request, "REMINDER")
 
     # Запрашиваем ответ от LLM
     try:

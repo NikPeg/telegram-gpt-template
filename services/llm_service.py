@@ -2,6 +2,7 @@
 Сервис для работы с LLM.
 """
 
+import json
 from datetime import datetime, timedelta, timezone
 
 import telegramify_markdown
@@ -20,6 +21,34 @@ from config import (
 )
 from database import User
 from services.llm_client import send_request_to_openrouter
+
+
+def log_prompt(chat_id: int, prompt: list[dict], prompt_type: str = "MESSAGE"):
+    """
+    Логирует промпт с разными уровнями детализации.
+    
+    Args:
+        chat_id: ID чата пользователя
+        prompt: Список сообщений промпта
+        prompt_type: Тип промпта (MESSAGE или REMINDER)
+    """
+    # DEBUG: Полный промпт со всей историей
+    logger.debug(f"PROMPT_FULL_{prompt_type}{chat_id}: {json.dumps(prompt, ensure_ascii=False, indent=2)}")
+    
+    # INFO: Только системные промпты (без истории диалога)
+    system_prompts = [msg for msg in prompt if msg.get("role") == "system"]
+    logger.info(f"PROMPT_SYSTEM_{prompt_type}{chat_id}: {json.dumps(system_prompts, ensure_ascii=False)}")
+    
+    # INFO: Статистика промпта
+    user_messages = len([msg for msg in prompt if msg.get("role") == "user"])
+    assistant_messages = len([msg for msg in prompt if msg.get("role") == "assistant"])
+    total_length = sum(len(msg.get("content", "")) for msg in prompt)
+    
+    logger.info(
+        f"PROMPT_STATS_{prompt_type}{chat_id}: "
+        f"messages={{user: {user_messages}, assistant: {assistant_messages}, system: {len(system_prompts)}}}, "
+        f"total_chars={total_length}"
+    )
 
 
 async def process_user_message(chat_id: int, message_text: str) -> str | None:
@@ -61,6 +90,9 @@ async def process_user_message(chat_id: int, message_text: str) -> str | None:
             "content": system_content,
         }
     )
+
+    # Логируем промпт перед отправкой
+    log_prompt(chat_id, prompt_for_request, "MESSAGE")
 
     # Запрашиваем ответ от LLM
     try:
