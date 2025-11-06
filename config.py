@@ -24,6 +24,7 @@ logging.addLevelName(FULL_LEVEL, "FULL")
 
 # LLM конфигурация
 LLM_TOKEN = os.environ.get("LLM_TOKEN")
+VISION_MODEL = os.environ.get("VISION_MODEL", "google/gemini-2.0-flash-001")
 
 # База данных
 DATABASE_NAME = os.environ.get("DATABASE_NAME")

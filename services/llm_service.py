@@ -19,7 +19,7 @@ from config import (
     logger,
 )
 from database import User
-from services.llm_client import send_request_to_openrouter
+from services.llm_client import send_image_to_vision_model, send_request_to_openrouter
 
 
 def log_prompt(chat_id: int, prompt: list[dict], prompt_type: str = "MESSAGE"):
@@ -128,3 +128,43 @@ async def process_user_message(chat_id: int, message_text: str) -> str | None:
     await user.update_in_db()
 
     return converted
+
+
+async def process_user_image(
+    chat_id: int, image_bytes: bytes, image_mime_type: str = "image/jpeg"
+) -> str | None:
+    """
+    Обрабатывает изображение от пользователя через vision модель и отправляет описание в LLM.
+
+    Args:
+        chat_id: ID чата пользователя
+        image_bytes: Байты изображения
+        image_mime_type: MIME-тип изображения
+
+    Returns:
+        Отформатированный ответ от LLM или None при ошибке
+    """
+    logger.info(f"USER{chat_id}TOLLM: [ИЗОБРАЖЕНИЕ]")
+
+    # Шаг 1: Получаем описание изображения от vision модели
+    try:
+        image_description = await send_image_to_vision_model(
+            image_bytes=image_bytes,
+            image_mime_type=image_mime_type,
+        )
+    except Exception as e:
+        logger.error(f"VISION{chat_id} - Критическая ошибка: {e}", exc_info=True)
+        return None
+
+    if image_description is None or image_description.strip() == "":
+        logger.error(f"VISION{chat_id} - пустой ответ от vision модели")
+        return None
+
+    logger.info(f"VISION{chat_id} - описание получено: {image_description}")
+
+    # Шаг 2: Отправляем описание в основную LLM от лица пользователя
+    # Формируем сообщение как будто пользователь описал картинку
+    message_text = f"[Пользователь отправил изображение. Описание изображения: {image_description}]"
+
+    # Используем существующую функцию для обработки текстового сообщения
+    return await process_user_message(chat_id, message_text)
