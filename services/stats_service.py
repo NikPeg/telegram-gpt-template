@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import json
 from collections import defaultdict
 from datetime import datetime
 from io import BytesIO
@@ -13,7 +12,7 @@ import aiosqlite
 import matplotlib
 import matplotlib.pyplot as plt
 
-from database import DATABASE_NAME, TABLE_NAME
+from database import DATABASE_NAME
 
 # Используем Agg backend для работы без GUI
 matplotlib.use("Agg")
@@ -32,7 +31,7 @@ WEEKDAY_NAMES = {
 
 async def get_user_timestamps(user_id: int | None = None) -> list[datetime]:
     """
-    Получает все timestamps из базы данных для указанного пользователя или всех пользователей.
+    Получает все timestamps из таблицы messages для указанного пользователя или всех пользователей.
 
     Args:
         user_id: ID пользователя. Если None, собирает статистику по всем пользователям.
@@ -47,27 +46,22 @@ async def get_user_timestamps(user_id: int | None = None) -> list[datetime]:
 
         if user_id is not None:
             # Получаем данные конкретного пользователя с timestamp
-            sql = f"SELECT prompt FROM {TABLE_NAME} WHERE id = ? AND prompt LIKE '%\"timestamp\"%'"
+            sql = "SELECT timestamp FROM messages WHERE user_id = ? AND timestamp IS NOT NULL"
             await cursor.execute(sql, (user_id,))
         else:
             # Получаем данные всех пользователей с timestamp
-            sql = f"SELECT prompt FROM {TABLE_NAME} WHERE prompt LIKE '%\"timestamp\"%'"
+            sql = "SELECT timestamp FROM messages WHERE timestamp IS NOT NULL"
             await cursor.execute(sql)
 
         rows = await cursor.fetchall()
 
-        # Парсим JSON и извлекаем timestamps
+        # Парсим timestamps
         for row in rows:
             if row[0]:
                 try:
-                    prompt_data = json.loads(row[0])
-                    for entry in prompt_data:
-                        if isinstance(entry, dict) and "timestamp" in entry and entry["timestamp"]:
-                            dt = datetime.strptime(
-                                entry["timestamp"], "%Y-%m-%d %H:%M:%S"
-                            )
-                            timestamps.append(dt)
-                except (json.JSONDecodeError, ValueError, TypeError):
+                    dt = datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+                    timestamps.append(dt)
+                except (ValueError, TypeError):
                     continue
 
     return timestamps
