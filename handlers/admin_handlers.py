@@ -62,18 +62,32 @@ async def cmd_dispatch(message: types.Message, state: FSMContext):
 @dp.message(AdminDispatchAll.input_text)
 async def cmd_dispatch_all_input_text(message: types.Message, state: FSMContext):
     """Обработка ввода текста для массовой рассылки."""
+    from aiogram.exceptions import TelegramForbiddenError
+
     try:
         all_ids = await User.get_ids_from_table()
         success_dispatch = 0
+        blocked_users = 0
 
         for user_id in all_ids:
             try:
                 await bot.send_message(user_id, message.text)
                 success_dispatch += 1
-            except Exception:
+            except TelegramForbiddenError:
+                # Пользователь заблокировал бота - удаляем из БД
+                user = User(user_id)
+                await user.delete_from_db()
+                blocked_users += 1
+                logger.info(f"USER{user_id} заблокировал бота, удален из БД")
+            except Exception as e:
+                # Другие ошибки - просто логируем и продолжаем
+                logger.warning(f"Не удалось отправить сообщение USER{user_id}: {e}")
                 continue
 
         result_msg = f"Сообщение отправлено {success_dispatch} пользователям"
+        if blocked_users > 0:
+            result_msg += f"\nУдалено заблокировавших бота: {blocked_users}"
+
         logger.info(result_msg)
 
         with contextlib.suppress(Exception):

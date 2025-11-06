@@ -233,6 +233,20 @@ class User:
             await db.commit()
             await cursor.close()
 
+    async def delete_from_db(self):
+        """Удаляет пользователя и все его сообщения из базы данных."""
+        async with aiosqlite.connect(DATABASE_NAME) as db:
+            cursor = await db.cursor()
+
+            # Удаляем сообщения пользователя
+            await cursor.execute("DELETE FROM messages WHERE user_id = ?", (self.id,))
+
+            # Удаляем самого пользователя
+            await cursor.execute(f"DELETE FROM {TABLE_NAME} WHERE id = ?", (self.id,))
+
+            await db.commit()
+            await cursor.close()
+
 
 async def check_db():
     async with aiosqlite.connect(DATABASE_NAME) as db:
