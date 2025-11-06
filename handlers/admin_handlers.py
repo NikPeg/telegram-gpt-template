@@ -133,7 +133,7 @@ async def cmd_stats(message: types.Message):
 
     try:
         # Генерируем статистику
-        hourly_graph, weekly_graph, total_messages = await generate_user_stats(user_id)
+        hourly_graph, weekly_graph, total_messages, total_users = await generate_user_stats(user_id)
 
         if hourly_graph is None:
             await status_msg.edit_text(
@@ -151,6 +151,7 @@ async def cmd_stats(message: types.Message):
         else:
             result_text = (
                 f"📊 Общая статистика всех пользователей\n"
+                f"Всего пользователей: {total_users}\n"
                 f"Всего сообщений: {total_messages}"
             )
 
@@ -166,10 +167,10 @@ async def cmd_stats(message: types.Message):
         )
 
         await message.answer_photo(
-            hourly_file, caption="Статистика по часам суток"
+            hourly_file, caption="Средняя статистика по часам суток"
         )
         await message.answer_photo(
-            weekly_file, caption="Статистика по дням недели"
+            weekly_file, caption="Средняя статистика по дням недели"
         )
 
     except Exception as e:
