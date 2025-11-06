@@ -11,7 +11,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, ReplyKeyboardRemove
 
 from bot_instance import bot, dp
-from config import DEBUG_CHAT, MESSAGES, logger
+from config import ADMIN_CHAT, MESSAGES, logger
 from database import User
 from filters import UserIsAdmin
 from services.stats_service import generate_user_stats
@@ -31,7 +31,7 @@ async def cmd_dispatch_input_text(message: types.Message, state: FSMContext):
         logger.error(error_msg, exc_info=True)
 
         with contextlib.suppress(Exception):
-            await bot.send_message(DEBUG_CHAT, error_msg)
+            await bot.send_message(ADMIN_CHAT, error_msg)
 
         await message.answer(error_msg)
         await state.clear()
@@ -77,7 +77,7 @@ async def cmd_dispatch_all_input_text(message: types.Message, state: FSMContext)
         logger.info(result_msg)
 
         with contextlib.suppress(Exception):
-            await bot.send_message(DEBUG_CHAT, result_msg)
+            await bot.send_message(ADMIN_CHAT, result_msg)
 
         await bot.send_message(message.chat.id, result_msg)
 
@@ -86,7 +86,7 @@ async def cmd_dispatch_all_input_text(message: types.Message, state: FSMContext)
         logger.error(error_msg, exc_info=True)
 
         with contextlib.suppress(Exception):
-            await bot.send_message(DEBUG_CHAT, error_msg)
+            await bot.send_message(ADMIN_CHAT, error_msg)
 
         await message.answer(error_msg)
         await state.clear()
@@ -181,7 +181,7 @@ async def cmd_stats(message: types.Message):
 
         # Пытаемся отправить в DEBUG чат (с обработкой ошибок)
         try:
-            await bot.send_message(DEBUG_CHAT, f"Ошибка в cmd_stats: {e}")
+            await bot.send_message(ADMIN_CHAT, f"Ошибка в cmd_stats: {e}")
         except Exception as debug_error:
             logger.warning(f"Не удалось отправить ошибку в DEBUG чат: {debug_error}")
 
@@ -240,7 +240,7 @@ async def cmd_set_reminder_times_input(message: types.Message, state: FSMContext
         logger.info(success_msg)
 
         with contextlib.suppress(Exception):
-            await bot.send_message(DEBUG_CHAT, success_msg)
+            await bot.send_message(ADMIN_CHAT, success_msg)
 
     except Exception as e:
         error_msg = f"❌ Ошибка при обновлении времен напоминаний: {e}"

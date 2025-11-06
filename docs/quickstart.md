@@ -17,7 +17,7 @@ cp .env.example .env
 TG_TOKEN=ваш_токен_от_BotFather
 LLM_TOKEN=ваш_ключ_от_OpenRouter
 MODEL=google/gemini-2.0-flash-exp:free
-DEBUG_CHAT=ваш_chat_id
+ADMIN_CHAT=ваш_chat_id
 ```
 
 ```bash
@@ -66,7 +66,7 @@ python main.py
 
 - **TG_TOKEN**: [@BotFather](https://t.me/BotFather) — создайте бота и скопируйте токен
 - **LLM_TOKEN**: [OpenRouter](https://openrouter.ai/) — зарегистрируйтесь и создайте API ключ
-- **DEBUG_CHAT**: [@userinfobot](https://t.me/userinfobot) — отправьте /start и получите свой ID
+- **ADMIN_CHAT**: [@userinfobot](https://t.me/userinfobot) — отправьте /start и получите свой ID
 
 ---
 

@@ -3,7 +3,7 @@
 Бот использует гибкую систему логирования с тремя выходами:
 - **Консоль** (stdout) - только для ошибок (ERROR+) и startup сообщений
 - **Файл** (`./logs/debug.log`) - настраиваемый уровень детализации, полная история
-- **Telegram** (DEBUG_CHAT) - настраиваемый уровень детализации, мониторинг в реальном времени
+- **Telegram** (ADMIN_CHAT) - настраиваемый уровень детализации, мониторинг в реальном времени
 
 ## Где найти логи
 
@@ -77,8 +77,8 @@ FILE_LOG_LEVEL=INFO
 # Варианты: DISABLED, CRITICAL, ERROR, WARNING, INFO, DEBUG, FULL
 TELEGRAM_LOG_LEVEL=DISABLED
 
-# ID чата для debug логов
-DEBUG_CHAT=123456789
+# ID чата для admin логов
+ADMIN_CHAT=123456789
 ```
 
 ## Рекомендуемые конфигурации
@@ -188,7 +188,7 @@ Debug chat: 123456789
 
 ## Telegram логирование
 
-Логи в Telegram отправляются в чат `DEBUG_CHAT` в формате:
+Логи в Telegram отправляются в чат `ADMIN_CHAT` в формате:
 ```
 INFO: USER241248104TOLLM:Привет!
 ERROR: LLM241248104 - Критическая ошибка: Connection timeout
@@ -338,7 +338,7 @@ docker-compose restart
 
 **Решение:**
 1. Проверьте что `TELEGRAM_LOG_LEVEL` не равен `DISABLED`
-2. Проверьте что `DEBUG_CHAT` правильный (узнать ID: @userinfobot)
+2. Проверьте что `ADMIN_CHAT` правильный (узнать ID: @userinfobot)
 3. Проверьте что бот не заблокирован в чате
 4. Перезапустите бота
 5. Проверьте логи:
@@ -378,7 +378,7 @@ FILE_LOG_LEVEL=FULL
    - Не коммитьте их в git (добавлено в `.gitignore`)
    - Ограничьте доступ на сервере: `chmod 700 logs/`
 
-2. **DEBUG_CHAT:**
+2. **ADMIN_CHAT:**
    - Используйте приватный чат
    - Не используйте публичные группы
    - Регулярно проверяйте кто имеет доступ
@@ -453,7 +453,7 @@ FILE_LOG_LEVEL=DEBUG
 ### Стало:
 ```bash
 # DEBUG больше не нужен, удалите его
-DEBUG_CHAT=123456789
+ADMIN_CHAT=123456789
 
 # Новые параметры
 FILE_LOG_LEVEL=DEBUG

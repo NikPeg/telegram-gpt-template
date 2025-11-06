@@ -144,7 +144,7 @@ exit
 | `SSH_PRIVATE_KEY` | Приватный SSH ключ | Файл из `~/.ssh/` (например `yc-organization-id-...-<user>`) |
 | `TG_TOKEN` | Токен Telegram бота | @BotFather |
 | `LLM_TOKEN` | Токен OpenRouter | https://openrouter.ai/ |
-| `DEBUG_CHAT` | ID чата для отладки | @userinfobot |
+| `ADMIN_CHAT` | ID чата для администрирования | @userinfobot |
 
 ### Опциональные Secrets (есть значения по умолчанию):
 
@@ -160,7 +160,6 @@ exit
 | `TIMEZONE_OFFSET` | `3` | Часовой пояс (UTC+3) |
 | `FROM_TIME` | `9` | Начало периода напоминаний |
 | `TO_TIME` | `23` | Конец периода напоминаний |
-| `ADMIN_LIST` | пусто | ID администраторов через запятую |
 
 ---
 
@@ -383,14 +382,14 @@ docker run -d \
   if: success()
   run: |
     curl -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
-      -d "chat_id=${{ secrets.DEBUG_CHAT }}" \
+      -d "chat_id=${{ secrets.ADMIN_CHAT }}" \
       -d "text=✅ Деплой успешно завершен!"
 
 - name: Notify on failure
   if: failure()
   run: |
     curl -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendMessage" \
-      -d "chat_id=${{ secrets.DEBUG_CHAT }}" \
+      -d "chat_id=${{ secrets.ADMIN_CHAT }}" \
       -d "text=❌ Деплой завершился с ошибкой!"
 ```
 

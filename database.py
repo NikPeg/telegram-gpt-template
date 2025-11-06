@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 LLM_TOKEN = os.environ.get("LLM_TOKEN")
 DEBUG = bool(os.environ.get("DEBUG"))
-DEBUG_CHAT = int(os.environ.get("DEBUG_CHAT"))
+ADMIN_CHAT = int(os.environ.get("ADMIN_CHAT"))
 DATABASE_NAME = os.environ.get("DATABASE_NAME")
 TABLE_NAME = os.environ.get("TABLE_NAME")
 MAX_CONTEXT = int(os.environ.get("MAX_CONTEXT"))

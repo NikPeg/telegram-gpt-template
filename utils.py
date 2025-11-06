@@ -7,7 +7,7 @@ import asyncio
 from aiogram.exceptions import TelegramMigrateToChat
 
 from bot_instance import bot
-from config import DEBUG_CHAT, logger
+from config import ADMIN_CHAT, logger
 
 
 async def keep_typing(chat_id: int, duration: int = 30):
@@ -34,19 +34,19 @@ async def forward_to_debug(message_chat_id: int, message_id: int):
     """
     try:
         # Отправляем метку с USER ID перед пересылкой
-        await bot.send_message(DEBUG_CHAT, f"USER{message_chat_id}")
+        await bot.send_message(ADMIN_CHAT, f"USER{message_chat_id}")
         # Пересылаем сообщение
         await bot.forward_message(
-            chat_id=DEBUG_CHAT, from_chat_id=message_chat_id, message_id=message_id
+            chat_id=ADMIN_CHAT, from_chat_id=message_chat_id, message_id=message_id
         )
     except TelegramMigrateToChat as e:
         # Чат был преобразован в супергруппу
         new_chat_id = e.migrate_to_chat_id
         logger.warning(
-            f"⚠️ DEBUG чат был преобразован в супергруппу!\n"
-            f"Старый ID: {DEBUG_CHAT}\n"
+            f"⚠️ ADMIN чат был преобразован в супергруппу!\n"
+            f"Старый ID: {ADMIN_CHAT}\n"
             f"Новый ID: {new_chat_id}\n"
-            f"❗ Обновите переменную DEBUG_CHAT в .env или GitHub Secrets"
+            f"❗ Обновите переменную ADMIN_CHAT в .env или GitHub Secrets"
         )
         # Пытаемся отправить в новый чат
         try:
@@ -62,9 +62,9 @@ async def forward_to_debug(message_chat_id: int, message_id: int):
     except Exception as e:
         # Любые другие ошибки (бот не добавлен в чат, чат не существует и т.д.)
         logger.warning(
-            f"⚠️ Не удалось переслать сообщение в DEBUG чат (ID: {DEBUG_CHAT}): {e}\n"
+            f"⚠️ Не удалось переслать сообщение в ADMIN чат (ID: {ADMIN_CHAT}): {e}\n"
             f"Проверьте:\n"
-            f"1. Бот добавлен в DEBUG чат\n"
-            f"2. DEBUG_CHAT ID корректный\n"
+            f"1. Бот добавлен в ADMIN чат\n"
+            f"2. ADMIN_CHAT ID корректный\n"
             f"3. У бота есть права на отправку сообщений"
         )

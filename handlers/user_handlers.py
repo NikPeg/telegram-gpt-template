@@ -8,7 +8,7 @@ from aiogram.types import ReplyKeyboardRemove
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 from bot_instance import dp
-from config import ADMIN_LIST, DEBUG_CHAT, MESSAGES, logger
+from config import ADMIN_CHAT, MESSAGES, logger
 from database import User
 from filters import OldMessage, UserNotInDB
 from utils import forward_to_debug
@@ -61,7 +61,7 @@ async def cmd_start(message: types.Message):
 async def cmd_help(message: types.Message):
     """Команда /help - справка (обычная или админская)."""
     # Проверяем, является ли пользователь администратором
-    is_admin = message.chat.id == DEBUG_CHAT or message.chat.id in ADMIN_LIST
+    is_admin = message.chat.id == ADMIN_CHAT
 
     # Выбираем соответствующее сообщение
     help_message = MESSAGES["msg_help_admin"] if is_admin else MESSAGES["msg_help"]

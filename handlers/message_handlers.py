@@ -9,7 +9,7 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramForbiddenError
 
 from bot_instance import dp
-from config import DEBUG_CHAT, MESSAGES, logger
+from config import ADMIN_CHAT, MESSAGES, logger
 from database import User
 from services.llm_service import process_user_message
 from utils import forward_to_debug, keep_typing
@@ -18,8 +18,8 @@ from utils import forward_to_debug, keep_typing
 @dp.message(F.text & ~F.text.startswith("/"))
 async def handle_text_message(message: types.Message):
     """Обработка текстовых сообщений через LLM (исключая команды)."""
-    # Игнорируем сообщения из DEBUG_CHAT - не обрабатываем их через LLM
-    if message.chat.id == DEBUG_CHAT:
+    # Игнорируем сообщения из ADMIN_CHAT - не обрабатываем их через LLM
+    if message.chat.id == ADMIN_CHAT:
         return
 
     logger.info(f"USER{message.chat.id}TOLLM:{message.text}")
@@ -95,9 +95,9 @@ async def handle_text_message(message: types.Message):
 @dp.message()
 async def unknown_message(message: types.Message):
     """Обработка неизвестных типов сообщений."""
-    # Игнорируем сообщения из DEBUG_CHAT
-    if message.chat.id == DEBUG_CHAT:
-        logger.debug(f"Игнорируем сообщение из DEBUG_CHAT: {message.text}")
+    # Игнорируем сообщения из ADMIN_CHAT
+    if message.chat.id == ADMIN_CHAT:
+        logger.debug(f"Игнорируем сообщение из ADMIN_CHAT: {message.text}")
         return
 
     logger.warning(

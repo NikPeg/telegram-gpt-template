@@ -56,7 +56,7 @@ docker-compose up -d
 - `TG_TOKEN` → [@BotFather](https://t.me/BotFather)
 - `LLM_TOKEN` → [OpenRouter](https://openrouter.ai/)
 - `MODEL` → `google/gemini-2.0-flash-exp:free`
-- `DEBUG_CHAT` → [@userinfobot](https://t.me/userinfobot)
+- `ADMIN_CHAT` → [@userinfobot](https://t.me/userinfobot)
 
 ### Без Docker?
 
@@ -227,7 +227,7 @@ DATABASE_NAME=users.db          # Имя файла базы данных
 Бот использует гибкую трехуровневую систему логирования:
 - **Консоль** - только ошибки (ERROR+) и startup сообщения
 - **Файл** (`debug.log`) - настраиваемый уровень детализации
-- **Telegram** (DEBUG_CHAT) - опциональные логи в чат для мониторинга
+- **Telegram** (ADMIN_CHAT) - опциональные логи в чат для мониторинга
 
 ### Уровни логирования:
 
@@ -251,7 +251,7 @@ FILE_LOG_LEVEL=INFO
 TELEGRAM_LOG_LEVEL=DISABLED
 
 # ID чата для debug логов
-DEBUG_CHAT=123456789
+ADMIN_CHAT=123456789
 ```
 
 ### Примеры конфигураций:

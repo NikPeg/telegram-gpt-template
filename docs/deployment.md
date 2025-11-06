@@ -104,7 +104,7 @@ cd empathy-ai-bot
 
 # 2. Настройте переменные окружения
 cp .env.example .env
-nano .env  # Заполните TG_TOKEN, LLM_TOKEN, MODEL, DEBUG_CHAT
+nano .env  # Заполните TG_TOKEN, LLM_TOKEN, MODEL, ADMIN_CHAT
 
 # 3. Запустите - всё!
 docker-compose up -d
@@ -158,7 +158,7 @@ MODEL=google/gemini-2.0-flash-exp:free
 
 # Debug
 DEBUG=0
-DEBUG_CHAT=123456789
+ADMIN_CHAT=123456789
 
 # Database
 DATABASE_NAME=users.db
@@ -173,8 +173,6 @@ TIMEZONE_OFFSET=3
 FROM_TIME=9
 TO_TIME=23
 
-# Admin (опционально)
-ADMIN_LIST=
 ```
 
 ### Рекомендуемые модели LLM

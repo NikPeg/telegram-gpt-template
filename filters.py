@@ -8,7 +8,7 @@ from aiogram import types
 from aiogram.filters import Filter
 
 import database
-from config import ADMIN_LIST, DEBUG_CHAT, FULL_LEVEL, logger
+from config import ADMIN_CHAT, FULL_LEVEL, logger
 from database import User
 
 
@@ -39,12 +39,12 @@ class UserIsAdmin(Filter):
     """Фильтр для проверки, является ли пользователь администратором."""
 
     async def __call__(self, message: types.Message) -> bool:
-        # Проверяем, что сообщение либо из DEBUG чата, либо от админа
-        is_admin = message.chat.id == DEBUG_CHAT or message.chat.id in ADMIN_LIST
+        # Проверяем, что сообщение из ADMIN чата
+        is_admin = message.chat.id == ADMIN_CHAT
         logger.log(
             FULL_LEVEL,
             f"UserIsAdmin проверка для {message.chat.id}: {is_admin} "
-            f"(DEBUG_CHAT={DEBUG_CHAT}, ADMIN_LIST={ADMIN_LIST})"
+            f"(ADMIN_CHAT={ADMIN_CHAT})"
         )
         return is_admin
 

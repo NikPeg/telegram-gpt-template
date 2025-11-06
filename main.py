@@ -12,7 +12,7 @@ from migrations.migration_manager import run_migrations
 # Импортируем все обработчики (чтобы они зарегистрировались)
 # ВАЖНО: порядок имеет значение! Сначала специфичные (команды), потом общие
 from bot_instance import bot, dp
-from config import DEBUG_CHAT, add_telegram_handler, logger
+from config import ADMIN_CHAT, add_telegram_handler, logger
 
 # isort: off - не сортировать этот блок, порядок критичен!
 from handlers import user_handlers  # noqa: F401
@@ -39,7 +39,7 @@ async def main():
     print("🤖 БОТ ЗАПУЩЕН")
     print("=" * 50)
     print(f"Database: {db_status}")
-    print(f"Debug chat: {DEBUG_CHAT}")
+    print(f"Admin chat: {ADMIN_CHAT}")
     print("Нажмите Ctrl-C для остановки бота")
     print("=" * 50 + "\n")
 
