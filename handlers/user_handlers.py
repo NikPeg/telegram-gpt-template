@@ -67,7 +67,7 @@ async def cmd_help(message: types.Message):
     help_message = MESSAGES["msg_help_admin"] if is_admin else MESSAGES["msg_help"]
 
     sent_msg = await message.answer(
-        help_message, reply_markup=ReplyKeyboardRemove()
+        help_message, reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown"
     )
     await forward_to_debug(message.chat.id, message.message_id)
     await forward_to_debug(message.chat.id, sent_msg.message_id)
