@@ -76,9 +76,22 @@ async def cmd_help(message: types.Message):
     # Выбираем соответствующее сообщение
     help_message = MESSAGES["msg_help_admin"] if is_admin else MESSAGES["msg_help"]
 
-    sent_msg = await message.answer(
-        help_message, reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown"
-    )
+    try:
+        sent_msg = await message.answer(
+            help_message, reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown"
+        )
+        logger.info(f"Сообщение /help успешно отправлено пользователю {message.chat.id}")
+    except Exception as e:
+        # Если не получилось с Markdown, пробуем без форматирования
+        logger.error(f"Ошибка при отправке /help с Markdown для USER{message.chat.id}: {e}", exc_info=True)
+        try:
+            sent_msg = await message.answer(
+                help_message, reply_markup=ReplyKeyboardRemove()
+            )
+            logger.info(f"Сообщение /help отправлено без форматирования пользователю {message.chat.id}")
+        except Exception as e2:
+            logger.error(f"Критическая ошибка при отправке /help для USER{message.chat.id}: {e2}", exc_info=True)
+            return
 
     # Не пересылаем сообщения из админ-чата в админ-чат
     if not is_admin:
