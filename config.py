@@ -18,9 +18,11 @@ load_dotenv()
 TG_TOKEN = os.environ.get("TG_TOKEN")
 ADMIN_CHAT = int(os.environ.get("ADMIN_CHAT") or "0")
 
-# Кастомный уровень логирования FULL (ниже DEBUG)
-FULL_LEVEL = 5
+# Кастомные уровни логирования
+FULL_LEVEL = 5  # Ниже DEBUG - полные промпты со всей историей
+MESSAGES_LEVEL = 25  # Между INFO и WARNING - только сообщения пользователей
 logging.addLevelName(FULL_LEVEL, "FULL")
+logging.addLevelName(MESSAGES_LEVEL, "MESSAGES")
 
 # LLM конфигурация
 LLM_TOKEN = os.environ.get("LLM_TOKEN")
@@ -106,6 +108,7 @@ def setup_logger():
         "FULL": FULL_LEVEL,
         "DEBUG": logging.DEBUG,
         "INFO": logging.INFO,
+        "MESSAGES": MESSAGES_LEVEL,
         "WARNING": logging.WARNING,
         "ERROR": logging.ERROR,
         "CRITICAL": logging.CRITICAL,

@@ -62,7 +62,8 @@ docker-compose logs -f
 | **CRITICAL** | 50 | Только критические ошибки |
 | **ERROR** | 40 | + Ошибки |
 | **WARNING** | 30 | + Предупреждения (блокировки пользователей и т.д.) |
-| **INFO** | 20 | + Сообщения пользователей, ответы бота, статистика промптов |
+| **MESSAGES** | 25 | Пересылка сообщений пользователей (без текстовых логов INFO) |
+| **INFO** | 20 | + Текстовые логи: сообщения пользователей, ответы бота, статистика |
 | **DEBUG** | 10 | + Системные промпты (без истории), сырой вывод LLM |
 | **FULL** | 5 | + Полные промпты со всей историей диалога |
 
@@ -70,11 +71,11 @@ docker-compose logs -f
 
 ```bash
 # Уровень логирования в файл debug.log
-# Варианты: DISABLED, CRITICAL, ERROR, WARNING, INFO, DEBUG, FULL
+# Варианты: DISABLED, CRITICAL, ERROR, WARNING, MESSAGES, INFO, DEBUG, FULL
 FILE_LOG_LEVEL=INFO
 
 # Уровень логирования в Telegram чат
-# Варианты: DISABLED, CRITICAL, ERROR, WARNING, INFO, DEBUG, FULL
+# Варианты: DISABLED, CRITICAL, ERROR, WARNING, MESSAGES, INFO, DEBUG, FULL
 TELEGRAM_LOG_LEVEL=DISABLED
 
 # ID чата для admin логов
@@ -97,21 +98,28 @@ TELEGRAM_LOG_LEVEL=ERROR
 ```
 **Результат:** В файле все важные события, в Telegram только ошибки
 
-### 3. Разработка - подробное логирование
+### 3. Мониторинг сообщений пользователей в Telegram
+```bash
+FILE_LOG_LEVEL=INFO
+TELEGRAM_LOG_LEVEL=MESSAGES
+```
+**Результат:** В файле все важные события, в Telegram пересылаются только сообщения пользователей (без текстовых логов INFO) + WARNING/ERROR. Пересылка работает на уровнях MESSAGES, INFO, DEBUG, FULL.
+
+### 4. Разработка - подробное логирование
 ```bash
 FILE_LOG_LEVEL=DEBUG
 TELEGRAM_LOG_LEVEL=INFO
 ```
 **Результат:** В файле всё включая системные промпты, в Telegram основные события
 
-### 4. Отладка промптов - максимальное логирование
+### 5. Отладка промптов - максимальное логирование
 ```bash
 FILE_LOG_LEVEL=FULL
 TELEGRAM_LOG_LEVEL=DISABLED
 ```
 **Результат:** В файле полные промпты с историей, Telegram отключен
 
-### 5. Без логов (не рекомендуется)
+### 6. Без логов (не рекомендуется)
 ```bash
 FILE_LOG_LEVEL=DISABLED
 TELEGRAM_LOG_LEVEL=DISABLED
@@ -120,13 +128,29 @@ TELEGRAM_LOG_LEVEL=DISABLED
 
 ## Что пишется на каждом уровне
 
-### INFO уровень
+### MESSAGES уровень
 ```
-2025-11-05 16:00:00 - INFO - Logger initialized: FILE=INFO, TELEGRAM=DISABLED
-2025-11-05 16:00:02 - INFO - USER241248104TOLLM:Привет!
-2025-11-05 16:00:03 - INFO - PROMPT_STATS_MESSAGE241248104: messages={user: 1, assistant: 0, system: 1}, total_chars=450
-2025-11-05 16:00:05 - INFO - LLM241248104 - Привет! Как дела?
-2025-11-05 16:00:10 - INFO - Telegram logging handler enabled
+USER241248104
+[Пересланное сообщение: Привет!]
+
+USER241248104
+[Пересланное изображение]
+
+WARNING: USER241248104 заблокировал чатбота
+ERROR: LLM241248104 - Критическая ошибка: Connection timeout
+```
+**Примечание:** На уровне MESSAGES в Telegram пересылаются сообщения пользователей (без текстовых логов), а также отправляются WARNING и ERROR
+
+### INFO уровень (+ всё из MESSAGES)
+```
+INFO: Logger initialized: FILE=INFO, TELEGRAM=DISABLED
+INFO: USER241248104TOLLM:Привет!
+INFO: PROMPT_STATS_MESSAGE241248104: messages={user: 1, assistant: 0, system: 1}, total_chars=450
+INFO: LLM241248104 - Привет! Как дела?
+INFO: Telegram logging handler enabled
+
+USER241248104
+[Пересланное сообщение: Привет!]
 ```
 
 ### DEBUG уровень (+ всё из INFO)
@@ -188,12 +212,32 @@ Debug chat: 123456789
 
 ## Telegram логирование
 
-Логи в Telegram отправляются в чат `ADMIN_CHAT` в формате:
+Логи в Telegram отправляются в чат `ADMIN_CHAT` в двух форматах:
+
+### 1. Текстовые логи (уровни INFO, DEBUG, FULL)
 ```
 INFO: USER241248104TOLLM:Привет!
 ERROR: LLM241248104 - Критическая ошибка: Connection timeout
 WARNING: USER241248104 заблокировал чатбота
 ```
+
+### 2. Пересылка сообщений (уровни MESSAGES, INFO, DEBUG, FULL)
+```
+USER241248104
+[Пересланное сообщение от пользователя]
+```
+
+**Важно:** Пересылка сообщений работает **только** на уровнях MESSAGES (25) и ниже (INFO, DEBUG, FULL). На уровнях WARNING (30) и выше пересылка **отключена**.
+
+| Уровень | Текстовые логи | Пересылка сообщений |
+|---------|----------------|---------------------|
+| **FULL** | ✅ Все (включая полные промпты) | ✅ Да |
+| **DEBUG** | ✅ Все (системные промпты) | ✅ Да |
+| **INFO** | ✅ Все основные события | ✅ Да |
+| **MESSAGES** | ❌ Нет | ✅ Да |
+| **WARNING** | ✅ Только предупреждения | ❌ Нет |
+| **ERROR** | ✅ Только ошибки | ❌ Нет |
+| **CRITICAL** | ✅ Только критические | ❌ Нет |
 
 **Преимущества:**
 - Мониторинг в реальном времени
@@ -201,9 +245,10 @@ WARNING: USER241248104 заблокировал чатбота
 - Не нужен доступ к серверу
 
 **Рекомендации:**
-- Для production используйте `ERROR` или `CRITICAL`
-- Для тестирования можно использовать `INFO`
-- Не используйте `DEBUG` или `FULL` - слишком много сообщений
+- Для production с текстовыми логами: `ERROR` или `WARNING`
+- Для мониторинга сообщений: `MESSAGES` (без текстовых логов INFO)
+- Для разработки: `INFO` (текстовые логи + пересылка)
+- Не используйте `DEBUG` или `FULL` в production - слишком много сообщений
 
 ## Файловое логирование
 

@@ -7,7 +7,7 @@ import asyncio
 from aiogram.exceptions import TelegramMigrateToChat
 
 from bot_instance import bot
-from config import ADMIN_CHAT, logger
+from config import ADMIN_CHAT, MESSAGES_LEVEL, logger
 
 
 async def keep_typing(chat_id: int, duration: int = 30):
@@ -27,11 +27,19 @@ async def keep_typing(chat_id: int, duration: int = 30):
 async def forward_to_debug(message_chat_id: int, message_id: int):
     """
     Пересылает сообщение в отладочный чат с меткой USER ID.
+    Пересылка происходит только если TELEGRAM_LOG_LEVEL <= MESSAGES (25).
 
     Args:
         message_chat_id: ID чата с сообщением
         message_id: ID сообщения
     """
+    # Проверяем уровень Telegram логирования
+    telegram_level = getattr(logger, "_telegram_level", 100)
+
+    # Пересылаем только если уровень <= MESSAGES (включая INFO, DEBUG, FULL)
+    if telegram_level > MESSAGES_LEVEL:
+        return
+
     try:
         # Отправляем метку с USER ID перед пересылкой
         await bot.send_message(ADMIN_CHAT, f"USER{message_chat_id}")
