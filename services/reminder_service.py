@@ -86,6 +86,14 @@ async def send_reminder_to_user(user_id: int):
             "content": msg["content"]
         })
 
+    # Добавляем явный user запрос, если нет сообщений в истории или последнее не от user
+    # Это необходимо, чтобы модель понимала что нужно ответить
+    if not context_messages or context_messages[-1]["role"] != "user":
+        prompt_for_request.append({
+            "role": "user",
+            "content": "Привет! Напомни мне о себе"
+        })
+
     # Логируем промпт перед отправкой
     log_prompt(user_id, prompt_for_request, f"REMINDER_{reminder_type.upper()}")
 
@@ -99,10 +107,6 @@ async def send_reminder_to_user(user_id: int):
     if llm_msg is None or llm_msg.strip() == "":
         logger.error(f"LLM{user_id} - пустой ответ от LLM")
         raise ValueError(f"Empty response from LLM for user {user_id}")
-
-    # Сохраняем ответ в историю
-    await user.update_prompt("assistant", llm_msg)
-    logger.debug(f"LLM_RAWOUTPUT{user_id}:{llm_msg}")
 
     # Конвертируем в Telegram Markdown
     converted = telegramify_markdown.markdownify(
@@ -127,7 +131,7 @@ async def send_reminder_to_user(user_id: int):
                 user.remind_of_yourself = 0
                 await user.update_in_db()
                 logger.warning(f"USER{user_id} заблокировал чатбота")
-                return
+                raise  # Выбрасываем исключение для корректного подсчета
             except Exception as e:
                 # Пробуем отправить без форматирования
                 try:
@@ -142,6 +146,10 @@ async def send_reminder_to_user(user_id: int):
 
             start += 4096
 
+        # Сохраняем ответ в историю ПОСЛЕ успешной отправки
+        await user.update_prompt("assistant", llm_msg)
+        logger.debug(f"LLM_RAWOUTPUT{user_id}:{llm_msg}")
+
         # Обновляем время последнего напоминания (используется для предотвращения дублей)
         now_msk = datetime.now(timezone(timedelta(hours=TIMEZONE_OFFSET)))
         user.remind_of_yourself = now_msk.strftime("%Y-%m-%d %H:%M:%S")
@@ -150,7 +158,8 @@ async def send_reminder_to_user(user_id: int):
         logger.info(f"LLM{user_id}REMINDER - {generated_message.text}")
 
     except Exception as e:
-        logger.error(f"Ошибка при отправке напоминания пользователю {user_id}: {e}")
+        logger.error(f"Ошибка при отправке напоминания пользователю {user_id}: {e}", exc_info=True)
+        raise  # Выбрасываем исключение для корректного подсчета ошибок
 
 
 async def check_and_send_reminders():
