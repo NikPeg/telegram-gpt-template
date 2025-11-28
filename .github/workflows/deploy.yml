@@ -15,24 +15,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-      
+
       - name: Run linter
         run: ruff check .
-      
+
       - name: Run tests
         run: pytest tests/ -v --tb=short
-      
+
       - name: Validate JSON configs
         run: |
           python -c "import json; json.load(open('config/prompts.json'))"
@@ -44,28 +44,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Login to Yandex Container Registry
         run: |
           # Сохраняем JSON ключ во временный файл
           echo '${{ secrets.YC_SA_JSON_CREDENTIALS }}' > /tmp/key.json
-          
+
           # Логинимся используя docker и yc CLI
           cat /tmp/key.json | docker login \
             --username json_key \
             --password-stdin \
             cr.yandex/${{ secrets.YC_REGISTRY_ID }}
-          
+
           # Удаляем временный файл
           rm /tmp/key.json
-      
+
       - name: Build and push Docker image
         run: |
           IMAGE_TAG="${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY_ID }}/${{ env.IMAGE_NAME }}"
-          
+
           # Собираем образ
           docker build -t ${IMAGE_TAG}:latest -t ${IMAGE_TAG}:${{ github.sha }} .
-          
+
           # Пушим оба тега
           docker push ${IMAGE_TAG}:latest
           docker push ${IMAGE_TAG}:${{ github.sha }}
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
@@ -105,40 +105,40 @@ jobs:
           envs: TG_TOKEN,LLM_TOKEN,ADMIN_CHAT,MODEL,DEBUG,TABLE_NAME,MAX_CONTEXT,MAX_STORAGE,DELAYED_REMINDERS_HOURS,DELAYED_REMINDERS_MINUTES,TIMEZONE_OFFSET,FROM_TIME,TO_TIME,ADMIN_LIST,FILE_LOG_LEVEL,TELEGRAM_LOG_LEVEL,NEW_IMAGE,BACKUP_IMAGE
           script: |
             set -e  # Остановка при ошибке
-            
+
             echo "🔄 Начинаем деплой..."
-            
+
             # Создаем директории если их нет
             export DEPLOY_DIR="$HOME/empathy-bot"
             mkdir -p "$DEPLOY_DIR/data" "$DEPLOY_DIR/logs"
             echo "📁 Директория деплоя: $DEPLOY_DIR"
-            
+
             # Сохраняем информацию о текущем работающем контейнере
             CURRENT_IMAGE=""
             if docker ps --filter name=empathy-ai-bot --format "{{.Image}}" | grep -q .; then
               CURRENT_IMAGE=$(docker ps --filter name=empathy-ai-bot --format "{{.Image}}")
               echo "📸 Текущий образ: $CURRENT_IMAGE"
-              
+
               # Тегируем текущий образ как stable (резервная копия)
               docker tag "$CURRENT_IMAGE" "$BACKUP_IMAGE" || echo "⚠️  Не удалось создать backup тег"
             else
               echo "⚠️  Текущий контейнер не найден"
             fi
-            
+
             # Обновляем новый образ
             echo "⬇️  Скачиваем новый образ..."
             docker pull "$NEW_IMAGE"
-            
+
             # Останавливаем текущий контейнер
             echo "⏸️  Останавливаем текущий контейнер..."
             docker stop empathy-ai-bot 2>/dev/null || true
             docker rm empathy-ai-bot 2>/dev/null || true
-            
+
             # Функция для запуска контейнера
             start_container() {
               local IMAGE=$1
               echo "🚀 Запускаем контейнер с образом: $IMAGE"
-              
+
               docker run -d \
                 --name empathy-ai-bot \
                 --restart unless-stopped \
@@ -163,7 +163,7 @@ jobs:
                 -v "$DEPLOY_DIR/logs":/app/logs \
                 "$IMAGE"
             }
-            
+
             # Запускаем новый контейнер
             if start_container "$NEW_IMAGE"; then
               echo "✅ Контейнер запущен"
@@ -171,19 +171,43 @@ jobs:
               echo "❌ Ошибка запуска контейнера"
               exit 1
             fi
-            
+
             # Ждем запуска и миграций
             echo "⏳ Ожидаем запуска (15 секунд)..."
             sleep 15
-            
+
             # Проверяем что контейнер работает
             if docker ps --filter name=empathy-ai-bot --filter status=running | grep -q empathy-ai-bot; then
               echo "✅ Контейнер работает"
-              
-              # Проверяем логи на наличие критических ошибок
-              if docker logs empathy-ai-bot 2>&1 | tail -50 | grep -iE "CRITICAL|ERROR.*Failed to|Exception.*startup"; then
+
+              # Проверяем успешность миграций
+              LOGS=$(docker logs empathy-ai-bot 2>&1 | tail -100)
+
+              if ! echo "$LOGS" | grep -q "✅ Все миграции применены успешно"; then
+                echo "❌ Миграции не были применены успешно!"
+                echo "$LOGS" | grep -A 5 "миграц"
+
+                # Откатываемся к стабильной версии
+                if [ -n "$CURRENT_IMAGE" ]; then
+                  echo "🔙 Откатываемся к предыдущей версии: $CURRENT_IMAGE"
+                  docker stop empathy-ai-bot 2>/dev/null || true
+                  docker rm empathy-ai-bot 2>/dev/null || true
+                  start_container "$CURRENT_IMAGE"
+                  sleep 10
+                  echo "🔄 Откат выполнен. Проверьте логи:"
+                  docker logs empathy-ai-bot --tail=30
+                  exit 1
+                else
+                  echo "⚠️  Нет предыдущей версии для отката!"
+                  docker logs empathy-ai-bot --tail=50
+                  exit 1
+                fi
+              fi
+
+              # Проверяем логи на наличие критических ошибок и ошибок миграций
+              if echo "$LOGS" | grep -iE "CRITICAL|ERROR.*Failed to|Exception.*startup|❌.*миграци|Ошибка при применении миграции"; then
                 echo "❌ Обнаружены критические ошибки в логах!"
-                
+
                 # Откатываемся к стабильной версии
                 if [ -n "$CURRENT_IMAGE" ]; then
                   echo "🔙 Откатываемся к предыдущей версии: $CURRENT_IMAGE"
@@ -207,7 +231,7 @@ jobs:
               fi
             else
               echo "❌ Контейнер не работает!"
-              
+
               # Откатываемся к стабильной версии
               if [ -n "$CURRENT_IMAGE" ]; then
                 echo "🔙 Откатываемся к предыдущей версии: $CURRENT_IMAGE"
@@ -223,7 +247,7 @@ jobs:
               fi
               exit 1
             fi
-      
+
       - name: Final verification
         if: always()
         uses: appleboy/ssh-action@v1.0.3
@@ -233,7 +257,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "🔍 Финальная проверка..."
-            
+
             if docker ps --filter name=empathy-ai-bot --filter status=running | grep -q empathy-ai-bot; then
               echo "✅ Бот работает"
               echo ""

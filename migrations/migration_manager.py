@@ -97,13 +97,23 @@ async def run_migrations():
                 migration_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(migration_module)
 
-                # Запускаем функцию migrate
-                if hasattr(migration_module, "migrate"):
+                # Запускаем функцию upgrade или migrate
+                if hasattr(migration_module, "upgrade"):
+                    # Новый формат: upgrade() без параметров (использует DATABASE_NAME напрямую)
+                    result = await migration_module.upgrade()
+                    await mark_migration_applied(db, migration_name)
+                    print(f"✅ Миграция {migration_name} применена успешно")
+                    if result:
+                        print(f"   {result}")
+                elif hasattr(migration_module, "migrate"):
+                    # Старый формат: migrate(db) с параметром
                     await migration_module.migrate(db)
                     await mark_migration_applied(db, migration_name)
                     print(f"✅ Миграция {migration_name} применена успешно")
                 else:
-                    print(f"⚠️  Миграция {migration_name} не содержит функцию migrate()")
+                    error_msg = f"Миграция {migration_name} не содержит функцию upgrade() или migrate()"
+                    print(f"❌ {error_msg}")
+                    raise RuntimeError(error_msg)
 
             except Exception as e:
                 print(f"❌ Ошибка при применении миграции {migration_name}: {e}")
