@@ -239,7 +239,7 @@ docker logs -f empathy-ai-bot  # в реальном времени
    tail -50 debug.log
    
    # Docker:
-   docker logs --tail=50 empathy-bot
+   docker logs --tail=50 empathy-ai-bot
    ```
 
 ### Ошибки LLM

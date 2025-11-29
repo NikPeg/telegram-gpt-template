@@ -1,5 +1,5 @@
 services:
-  empathy-bot:
+  empathy-ai-bot:
     build: .
     container_name: empathy-ai-bot
     restart: unless-stopped

@@ -50,7 +50,7 @@
 
 ```bash
 # Создайте реестр контейнеров
-yc container registry create --name empathy-bot-registry
+yc container registry create --name empathy-ai-bot-registry
 
 # Получите ID реестра
 yc container registry list
@@ -96,7 +96,7 @@ yc config list | grep folder-id
 ```bash
 # Создайте VM с Docker
 yc compute instance create \
-  --name empathy-bot-server \
+  --name empathy-ai-bot-server \
   --zone ru-central1-a \
   --network-interface subnet-name=default-ru-central1-a,nat-ip-version=ipv4 \
   --create-boot-disk image-folder-id=standard-images,image-family=ubuntu-2204-lts,size=20 \
@@ -105,7 +105,7 @@ yc compute instance create \
   --ssh-key ~/.ssh/id_rsa.pub
 
 # Получите IP адрес
-yc compute instance get empathy-bot-server --format json | jq -r .network_interfaces[0].primary_v4_address.one_to_one_nat.address
+yc compute instance get empathy-ai-bot-server --format json | jq -r .network_interfaces[0].primary_v4_address.one_to_one_nat.address
 ```
 
 ### 5. Установка Docker на сервере
@@ -171,8 +171,8 @@ SSH на сервер и выполните:
 
 ```bash
 # Создайте директории для данных
-sudo mkdir -p /opt/empathy-bot/data /opt/empathy-bot/logs
-sudo chmod -R 755 /opt/empathy-bot
+sudo mkdir -p /opt/empathy-ai-bot/data /opt/empathy-ai-bot/logs
+sudo chmod -R 755 /opt/empathy-ai-bot
 ```
 
 ### Настройка Docker для работы без sudo
@@ -245,7 +245,7 @@ docker logs --tail 50 empathy-ai-bot
 docker logs -f empathy-ai-bot
 
 # Логи из файла
-ssh ubuntu@<your_server_ip> 'cat /opt/empathy-bot/logs/debug.log | tail -50'
+ssh ubuntu@<your_server_ip> 'cat /opt/empathy-ai-bot/logs/debug.log | tail -50'
 ```
 
 ### Проверка статуса
@@ -308,7 +308,7 @@ docker inspect empathy-ai-bot
 **Решение:**
 1. Посмотрите логи: `docker logs empathy-ai-bot`
 2. Проверьте все Secrets — особенно `TG_TOKEN` и `LLM_TOKEN`
-3. Проверьте, что директории созданы: `ls -la /opt/empathy-bot/`
+3. Проверьте, что директории созданы: `ls -la /opt/empathy-ai-bot/`
 
 ### Бот не отвечает
 
@@ -328,10 +328,10 @@ docker inspect empathy-ai-bot
 **Проблема:** После обновления бота база данных пустая
 
 **Решение:**
-- База сохраняется в volume `/opt/empathy-bot/data`
+- База сохраняется в volume `/opt/empathy-ai-bot/data`
 - Убедитесь, что в deploy.sh правильно смонтирован volume:
   ```bash
-  -v /opt/empathy-bot/data:/data
+  -v /opt/empathy-ai-bot/data:/data
   ```
 
 ### Workflow запускается, но ничего не происходит
@@ -364,8 +364,8 @@ docker images | grep empathy-ai-bot
 docker run -d \
   --name empathy-ai-bot \
   --restart unless-stopped \
-  --env-file /opt/empathy-bot/.env \
-  -v /opt/empathy-bot/data:/data \
+  --env-file /opt/empathy-ai-bot/.env \
+  -v /opt/empathy-ai-bot/data:/data \
   cr.yandex/<registry-id>/empathy-ai-bot:<старый-тег>
 ```
 
@@ -403,7 +403,7 @@ docker run -d \
 
 ```bash
 # На сервере добавьте в crontab
-0 3 * * * docker exec empathy-ai-bot sqlite3 /data/users.db .dump > /opt/empathy-bot/backups/backup-$(date +\%Y\%m\%d).sql
+0 3 * * * docker exec empathy-ai-bot sqlite3 /data/users.db .dump > /opt/empathy-ai-bot/backups/backup-$(date +\%Y\%m\%d).sql
 ```
 
 ### 4. Blue-Green deployment

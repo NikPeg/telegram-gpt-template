@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: cr.yandex
-  IMAGE_NAME: empathy-bot
+  IMAGE_NAME: empathy-ai-bot
 
 jobs:
   test:
@@ -84,7 +84,7 @@ jobs:
           username: ${{ secrets.YC_INSTANCE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "docker-compose.prod.yml"
-          target: "~/empathy-bot/"
+          target: "~/empathy-ai-bot/"
 
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -120,7 +120,7 @@ jobs:
             echo "🔄 Начинаем деплой..."
 
             # Создаем директории если их нет
-            export DEPLOY_DIR="$HOME/empathy-bot"
+            export DEPLOY_DIR="$HOME/empathy-ai-bot"
             mkdir -p "$DEPLOY_DIR/data" "$DEPLOY_DIR/logs"
             echo "📁 Директория деплоя: $DEPLOY_DIR"
 
@@ -200,6 +200,24 @@ jobs:
             start_container() {
               echo "🚀 Запускаем контейнер через docker-compose..."
               
+              # Убеждаемся что старый контейнер полностью убит
+              OLD_CONTAINERS=$(docker ps -a --filter name=empathy-ai-bot --format "{{.ID}}" || true)
+              if [ -n "$OLD_CONTAINERS" ]; then
+                echo "⚠️  Найдены остатки старых контейнеров, удаляем..."
+                for CID in $OLD_CONTAINERS; do
+                  # Убиваем процесс
+                  OLD_PID=$(docker inspect "$CID" --format '{{.State.Pid}}' 2>/dev/null || echo "")
+                  if [ -n "$OLD_PID" ] && [ "$OLD_PID" != "0" ]; then
+                    echo "  Убиваем PID: $OLD_PID"
+                    sudo kill -9 "$OLD_PID" 2>/dev/null || true
+                  fi
+                  sleep 1
+                  # Удаляем контейнер
+                  docker rm -f "$CID" 2>/dev/null || true
+                done
+                sleep 2
+              fi
+              
               # Создаем .env файл со всеми переменными окружения
               echo "📝 Создаем .env файл..."
               {
@@ -225,7 +243,7 @@ jobs:
               
               # Запускаем через docker-compose
               cd "$DEPLOY_DIR"
-              docker-compose -f docker-compose.prod.yml up -d
+              sudo docker-compose -f docker-compose.prod.yml up -d
             }
 
             # Запускаем новый контейнер

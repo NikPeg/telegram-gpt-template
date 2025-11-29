@@ -1,6 +1,6 @@
 services:
-  empathy-bot:
-    image: cr.yandex/${YC_REGISTRY_ID}/empathy-bot:latest
+  empathy-ai-bot:
+    image: cr.yandex/${YC_REGISTRY_ID}/empathy-ai-bot:latest
     container_name: empathy-ai-bot
     restart: unless-stopped
     network_mode: host
@@ -14,9 +14,9 @@ services:
       - DATABASE_NAME=/data/users.db
     # Healthcheck
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'python.*main.py' || exit 1"]
-      interval: 30s
+      test: ["CMD-SHELL", "ps aux | grep '[p]ython.*main.py' || exit 1"]
+      interval: 15s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
 
