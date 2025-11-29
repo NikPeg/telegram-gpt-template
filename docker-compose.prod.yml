@@ -3,6 +3,7 @@ services:
     image: cr.yandex/${YC_REGISTRY_ID}/empathy-bot:latest
     container_name: empathy-ai-bot
     restart: unless-stopped
+    network_mode: host
     env_file:
       - .env
     volumes:
