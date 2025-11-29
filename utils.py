@@ -82,10 +82,10 @@ async def forward_to_debug(message_chat_id: int, message_id: int):
 def is_private_chat(message: types.Message) -> bool:
     """
     Проверяет, является ли сообщение из личного чата.
-    
+
     Args:
         message: Сообщение от пользователя
-        
+
     Returns:
         True если это личный чат, False если группа/супергруппа/канал
     """
@@ -99,32 +99,32 @@ async def should_respond_in_chat(message: types.Message) -> bool:
     - Сообщение является ответом на сообщение бота
     - Бот упомянут в тексте через @username
     - Бот упомянут через entities (mention/text_mention)
-    
+
     Args:
         message: Сообщение от пользователя
-        
+
     Returns:
         True если бот должен ответить, False иначе
     """
     # Если это личный чат, всегда отвечаем
     if is_private_chat(message):
         return True
-    
+
     # Получаем информацию о боте
     bot_info = await bot.get_me()
     bot_username = bot_info.username
-    
+
     # Проверяем, является ли сообщение ответом на сообщение бота
-    if message.reply_to_message:
-        if message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
-            # Дополнительно проверяем, что это именно наш бот
-            if message.reply_to_message.from_user.id == bot_info.id:
-                return True
-    
+    if (message.reply_to_message and
+        message.reply_to_message.from_user and
+        message.reply_to_message.from_user.is_bot and
+        message.reply_to_message.from_user.id == bot_info.id):
+        return True
+
     # Проверяем упоминание бота в тексте
     if message.text and f"@{bot_username}" in message.text:
         return True
-    
+
     # Проверяем упоминание через entities
     if message.entities:
         for entity in message.entities:
@@ -137,12 +137,12 @@ async def should_respond_in_chat(message: types.Message) -> bool:
                 # Прямое упоминание пользователя (может быть и ботом)
                 if entity.user and entity.user.id == bot_info.id:
                     return True
-    
+
     # Проверяем упоминание в caption (для фото/видео)
     if message.caption:
         if f"@{bot_username}" in message.caption:
             return True
-        
+
         # Проверяем entities в caption
         if message.caption_entities:
             for entity in message.caption_entities:
@@ -153,5 +153,5 @@ async def should_respond_in_chat(message: types.Message) -> bool:
                 elif entity.type == "text_mention":
                     if entity.user and entity.user.id == bot_info.id:
                         return True
-    
+
     return False

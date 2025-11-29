@@ -79,7 +79,7 @@ async def process_subscription_check(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     chat_id = callback_query.message.chat.id
     is_chat = not is_private_chat(callback_query.message)
-    
+
     logger.info(f"USER{user_id}: запрос проверки подписки ({'чат' if is_chat else 'ЛС'})")
 
     # Показываем индикатор загрузки
@@ -98,10 +98,10 @@ async def process_subscription_check(callback_query: types.CallbackQuery):
                 # Создаем/обновляем запись о верификации чата
                 current_time = datetime.now(timezone(timedelta(hours=TIMEZONE_OFFSET)))
                 timestamp = current_time.strftime("%Y-%m-%d %H:%M:%S")
-                
+
                 # Получаем имя пользователя
                 user_name = callback_query.from_user.first_name or callback_query.from_user.username or "Неизвестный"
-                
+
                 chat_verification = ChatVerification(
                     chat_id=chat_id,
                     verified_by_user_id=user_id,
@@ -109,16 +109,16 @@ async def process_subscription_check(callback_query: types.CallbackQuery):
                     user_name=user_name
                 )
                 await chat_verification.save_to_db()
-                
+
                 # Удаляем сообщение с просьбой подписаться
                 await callback_query.message.delete()
-                
+
                 # Отправляем подтверждение В ЧАТ
                 await bot.send_message(
                     chat_id=chat_id,
                     text=MESSAGES["msg_subscription_verified_chat"].format(user_name=user_name)
                 )
-                
+
                 logger.info(f"CHAT{chat_id}: верифицирован пользователем {user_name} (ID: {user_id})")
             else:
                 # === ЛИЧНЫЙ ЧАТ ===

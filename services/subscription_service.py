@@ -122,7 +122,7 @@ async def subscription_check_loop(bot: Bot):
     """
     Фоновая задача для периодической проверки подписок пользователей и чатов.
     Проверяет подписку каждые 30 минут.
-    
+
     Проверяет:
     1. Личных пользователей (ID > 0) - обновляет subscription_verified
     2. Верифицированные чаты - проверяет подписку пользователя-верификатора
@@ -164,41 +164,42 @@ async def subscription_check_loop(bot: Bot):
 
             # ========== ПРОВЕРКА ВЕРИФИЦИРОВАННЫХ ЧАТОВ ==========
             import aiosqlite
+
             from database import DATABASE_NAME
-            
+
             async with aiosqlite.connect(DATABASE_NAME) as db:
                 cursor = await db.execute("SELECT chat_id, verified_by_user_id, user_name FROM chat_verifications")
                 chat_verifications = await cursor.fetchall()
-            
+
             if chat_verifications:
                 logger.info(f"Проверка верификации для {len(chat_verifications)} чатов")
-                
+
                 for chat_id, verifier_user_id, verifier_name in chat_verifications:
                     try:
                         # Проверяем подписку пользователя-верификатора
                         is_subscribed = await is_user_subscribed_to_all(bot, verifier_user_id)
-                        
+
                         if not is_subscribed:
                             # Верификатор отписался - удаляем верификацию чата
                             logger.warning(
                                 f"CHAT{chat_id}: верификатор {verifier_name} (ID: {verifier_user_id}) "
                                 f"отписался от каналов. Удаляем верификацию чата."
                             )
-                            
+
                             chat_verification = ChatVerification(chat_id)
                             await chat_verification.delete_from_db()
-                            
+
                             logger.info(f"CHAT{chat_id}: верификация удалена")
                         else:
                             logger.debug(f"CHAT{chat_id}: верификатор {verifier_name} подписан, всё ОК")
-                    
+
                     except Exception as e:
                         logger.error(
-                            f"Ошибка при проверке верификации CHAT{chat_id}: {e}", 
+                            f"Ошибка при проверке верификации CHAT{chat_id}: {e}",
                             exc_info=True
                         )
                         continue
-                
+
                 logger.debug("Проверка верификации чатов завершена")
             else:
                 logger.debug("Нет верифицированных чатов для проверки")

@@ -80,23 +80,22 @@ class SubscriptionMiddleware(BaseMiddleware):
 
             # Если subscription_verified == 1 или NULL, продолжаем обработку
             return await handler(event, data)
-        else:
-            # === ГРУППОВОЙ ЧАТ ===
-            chat_id = event.chat.id
-            
-            # Проверяем, верифицирован ли чат
-            is_verified = await ChatVerification.is_chat_verified(chat_id)
-            
-            if not is_verified:
-                # Чат не верифицирован
-                logger.info(f"CHAT{chat_id}: попытка использования бота без верификации")
-                
-                # Отправляем сообщение с просьбой подписаться
-                await send_subscription_request(chat_id, event.message_id, is_chat=True)
-                
-                # Прерываем обработку
-                return None
-            
-            # Чат верифицирован, продолжаем обработку
-            return await handler(event, data)
+        # === ГРУППОВОЙ ЧАТ ===
+        chat_id = event.chat.id
+
+        # Проверяем, верифицирован ли чат
+        is_verified = await ChatVerification.is_chat_verified(chat_id)
+
+        if not is_verified:
+            # Чат не верифицирован
+            logger.info(f"CHAT{chat_id}: попытка использования бота без верификации")
+
+            # Отправляем сообщение с просьбой подписаться
+            await send_subscription_request(chat_id, event.message_id, is_chat=True)
+
+            # Прерываем обработку
+            return None
+
+        # Чат верифицирован, продолжаем обработку
+        return await handler(event, data)
 

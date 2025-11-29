@@ -321,10 +321,10 @@ class ChatVerification:
     async def is_chat_verified(chat_id: int) -> bool:
         """
         Проверяет, верифицирован ли чат.
-        
+
         Args:
             chat_id: ID чата (отрицательное число)
-            
+
         Returns:
             True если чат верифицирован, False иначе
         """
