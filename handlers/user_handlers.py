@@ -2,14 +2,14 @@
 Обработчики пользовательских команд.
 """
 
-from aiogram import types
+from aiogram import F, types
 from aiogram.filters.command import Command
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
-from bot_instance import dp
+from bot_instance import bot, dp
 from config import ADMIN_CHAT, MESSAGES, REQUIRED_CHANNELS, logger
-from database import User
+from database import User, delete_chat_data
 from filters import OldMessage, UserNotInDB
 from handlers.subscription_handlers import send_subscription_request
 from utils import forward_to_debug
@@ -18,6 +18,59 @@ from utils import forward_to_debug
 @dp.message(OldMessage())
 async def spam(message: types.Message):
     """Игнорирует старые сообщения (старше 1 минуты)."""
+
+
+@dp.message(F.new_chat_members)
+async def bot_added_to_chat(message: types.Message):
+    """Обработчик добавления бота в групповой чат."""
+    # Проверяем, что бот был добавлен в чат
+    bot_info = await bot.get_me()
+    bot_added = any(member.id == bot_info.id for member in message.new_chat_members)
+
+    if bot_added:
+        chat_id = message.chat.id
+        chat_title = message.chat.title or "этот чат"
+        logger.info(f"CHAT{chat_id}: бот добавлен в чат '{chat_title}'")
+
+        # Отправляем приветственное сообщение
+        welcome_text = (
+            f"👋 Привет! Спасибо, что добавили меня в '{chat_title}'!\n\n"
+            f"Я - Эдичка, твой супер-дружелюбный чатбот с искусственным интеллектом! 😃\n\n"
+            f"✨ Что я умею:\n"
+            f"• 💬 Поддерживаю живые беседы и запоминаю контекст\n"
+            f"• 📸 Понимаю картинки\n"
+            f"• 🎥 Смотрю видео\n"
+            f"• 🎯 Всегда рад поболтать\n\n"
+            f"Упомяните меня в сообщении (@{bot_info.username}) или ответьте на моё сообщение, "
+            f"чтобы начать общение! 😊\n\n"
+            f"Команды: /help"
+        )
+
+        await message.answer(welcome_text)
+
+        # Если есть обязательные каналы, отправляем запрос на подписку
+        if REQUIRED_CHANNELS:
+            await send_subscription_request(chat_id, message.message_id, is_chat=True)
+
+
+@dp.message(F.left_chat_member)
+async def bot_removed_from_chat(message: types.Message):
+    """Обработчик удаления бота из группового чата."""
+    # Проверяем, что бот был удален из чата
+    bot_info = await bot.get_me()
+    bot_removed = message.left_chat_member.id == bot_info.id
+
+    if bot_removed:
+        chat_id = message.chat.id
+        chat_title = message.chat.title or "чат"
+        logger.info(f"CHAT{chat_id}: бот удален из чата '{chat_title}'")
+
+        # Удаляем все данные чата из БД
+        try:
+            await delete_chat_data(chat_id)
+            logger.info(f"CHAT{chat_id}: все данные успешно удалены")
+        except Exception as e:
+            logger.error(f"CHAT{chat_id}: ошибка при удалении данных - {e}", exc_info=True)
 
 
 @dp.message(UserNotInDB())

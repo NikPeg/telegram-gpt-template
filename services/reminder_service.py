@@ -18,7 +18,7 @@ from config import (
     TIMEZONE_OFFSET,
     logger,
 )
-from database import User
+from database import User, delete_chat_data
 from services.llm_client import send_request_to_openrouter
 from services.llm_service import log_prompt
 from utils import forward_to_debug
@@ -140,9 +140,20 @@ async def send_reminder_to_user(user_id: int):
                 )
                 await forward_to_debug(user_id, generated_message.message_id)
             except TelegramForbiddenError:
-                user.remind_of_yourself = 0
-                await user.update_in_db()
-                logger.warning(f"USER{user_id} заблокировал чатбота")
+                # Проверяем, это чат или пользователь
+                if user_id < 0:
+                    # Это чат - удаляем все данные
+                    logger.warning(f"CHAT{user_id} заблокировал бота или бот был удален из чата")
+                    try:
+                        await delete_chat_data(user_id)
+                        logger.info(f"CHAT{user_id}: все данные удалены из БД")
+                    except Exception as e:
+                        logger.error(f"CHAT{user_id}: ошибка при удалении данных - {e}", exc_info=True)
+                else:
+                    # Это пользователь - отключаем напоминания
+                    user.remind_of_yourself = 0
+                    await user.update_in_db()
+                    logger.warning(f"USER{user_id} заблокировал чатбота")
                 raise  # Выбрасываем исключение для корректного подсчета
             except Exception as e:
                 # Пробуем отправить без форматирования

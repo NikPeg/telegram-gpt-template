@@ -339,6 +339,45 @@ class ChatVerification:
         return bool(result)
 
 
+async def delete_chat_data(chat_id: int):
+    """
+    Удаляет все данные чата из БД (верификацию, сообщения, пользователя).
+
+    Args:
+        chat_id: ID чата (отрицательное число)
+    """
+    from config import logger
+
+    async with aiosqlite.connect(DATABASE_NAME) as db:
+        cursor = await db.cursor()
+
+        # Удаляем верификацию чата
+        await cursor.execute(
+            "DELETE FROM chat_verifications WHERE chat_id = ?",
+            (chat_id,)
+        )
+        logger.debug(f"CHAT{chat_id}: верификация удалена из БД")
+
+        # Удаляем все сообщения чата
+        await cursor.execute(
+            "DELETE FROM messages WHERE user_id = ?",
+            (chat_id,)
+        )
+        logger.debug(f"CHAT{chat_id}: сообщения удалены из БД")
+
+        # Удаляем запись о чате из таблицы users (если есть)
+        await cursor.execute(
+            "DELETE FROM users WHERE id = ?",
+            (chat_id,)
+        )
+        logger.debug(f"CHAT{chat_id}: запись пользователя удалена из БД")
+
+        await db.commit()
+        await cursor.close()
+
+    logger.info(f"CHAT{chat_id}: все данные удалены из БД")
+
+
 async def check_db():
     async with aiosqlite.connect(DATABASE_NAME) as db:
         async with db.cursor() as cursor:

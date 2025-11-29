@@ -53,6 +53,10 @@ class SubscriptionMiddleware(BaseMiddleware):
         if event.text and event.text.startswith(("/start", "/help")):
             return await handler(event, data)
 
+        # Пропускаем проверку для системных сообщений (добавление/удаление участников и т.д.)
+        if event.new_chat_members or event.left_chat_member or event.new_chat_title or event.new_chat_photo:
+            return await handler(event, data)
+
         # Различаем личные чаты и групповые
         if is_private_chat(event):
             # === ЛИЧНЫЙ ЧАТ ===
