@@ -237,12 +237,73 @@ jobs:
               exit 1
             fi
 
-            # Ждем запуска и миграций
-            echo "⏳ Ожидаем запуска (15 секунд)..."
-            sleep 15
-
-            # Проверяем что контейнер работает
-            if docker ps --filter name=empathy-ai-bot --filter status=running | grep -q empathy-ai-bot; then
+            # Ждем пока контейнер станет healthy (максимум 60 секунд)
+            echo "⏳ Ожидаем запуска и проверки healthcheck (до 60 секунд)..."
+            HEALTH_CHECK_TIMEOUT=60
+            HEALTH_CHECK_INTERVAL=5
+            ELAPSED=0
+            
+            while [ $ELAPSED -lt $HEALTH_CHECK_TIMEOUT ]; do
+              HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' empathy-ai-bot 2>/dev/null || echo "none")
+              
+              if [ "$HEALTH_STATUS" = "healthy" ]; then
+                echo "✅ Контейнер здоров (healthy)"
+                break
+              elif [ "$HEALTH_STATUS" = "none" ]; then
+                # Контейнер без healthcheck или не запущен
+                if docker ps --filter name=empathy-ai-bot --filter status=running | grep -q empathy-ai-bot; then
+                  echo "ℹ️  Контейнер работает (healthcheck не настроен)"
+                  break
+                else
+                  echo "❌ Контейнер не запущен"
+                  break
+                fi
+              else
+                echo "⏳ Статус: $HEALTH_STATUS (прошло ${ELAPSED}с)"
+                sleep $HEALTH_CHECK_INTERVAL
+                ELAPSED=$((ELAPSED + HEALTH_CHECK_INTERVAL))
+              fi
+            done
+            
+            # Финальная проверка статуса
+            FINAL_HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' empathy-ai-bot 2>/dev/null || echo "none")
+            CONTAINER_RUNNING=$(docker ps --filter name=empathy-ai-bot --filter status=running | grep -q empathy-ai-bot && echo "yes" || echo "no")
+            
+            if [ "$FINAL_HEALTH_STATUS" != "healthy" ] && [ "$FINAL_HEALTH_STATUS" != "none" ]; then
+              echo "❌ Контейнер не прошел healthcheck за ${HEALTH_CHECK_TIMEOUT} секунд!"
+              echo "Финальный статус: $FINAL_HEALTH_STATUS"
+              docker logs empathy-ai-bot --tail=50
+              
+              # Откатываемся к стабильной версии
+              if [ -n "$CURRENT_IMAGE" ]; then
+                echo "🔙 Откатываемся к предыдущей версии из-за проблем с healthcheck"
+                
+                # Получаем PID процесса и убиваем его
+                CONTAINER_PID=$(docker inspect empathy-ai-bot --format '{{.State.Pid}}' 2>/dev/null || echo "")
+                if [ -n "$CONTAINER_PID" ] && [ "$CONTAINER_PID" != "0" ]; then
+                  sudo kill -9 "$CONTAINER_PID" 2>/dev/null || true
+                  sleep 1
+                fi
+                
+                docker stop empathy-ai-bot 2>/dev/null || true
+                docker rm -f empathy-ai-bot 2>/dev/null || true
+                
+                # Перетегируем backup образ как latest для docker-compose
+                echo "📦 Перетегируем $BACKUP_IMAGE -> $NEW_IMAGE"
+                docker tag "$BACKUP_IMAGE" "$NEW_IMAGE" || echo "⚠️ Не удалось перетегировать"
+                
+                start_container
+                sleep 10
+                echo "🔄 Откат выполнен. Проверьте логи:"
+                docker logs empathy-ai-bot --tail=30
+                exit 1
+              else
+                echo "⚠️  Нет предыдущей версии для отката!"
+                exit 1
+              fi
+            fi
+            
+            if [ "$CONTAINER_RUNNING" = "yes" ]; then
               echo "✅ Контейнер работает"
 
               # Проверяем успешность миграций
@@ -255,6 +316,14 @@ jobs:
                 # Откатываемся к стабильной версии
                 if [ -n "$CURRENT_IMAGE" ]; then
                   echo "🔙 Откатываемся к предыдущей версии: $CURRENT_IMAGE"
+                  
+                  # Получаем PID процесса и убиваем его
+                  CONTAINER_PID=$(docker inspect empathy-ai-bot --format '{{.State.Pid}}' 2>/dev/null || echo "")
+                  if [ -n "$CONTAINER_PID" ] && [ "$CONTAINER_PID" != "0" ]; then
+                    sudo kill -9 "$CONTAINER_PID" 2>/dev/null || true
+                    sleep 1
+                  fi
+                  
                   docker stop empathy-ai-bot 2>/dev/null || true
                   docker rm -f empathy-ai-bot 2>/dev/null || true
                   
@@ -281,6 +350,14 @@ jobs:
                 # Откатываемся к стабильной версии
                 if [ -n "$CURRENT_IMAGE" ]; then
                   echo "🔙 Откатываемся к предыдущей версии: $CURRENT_IMAGE"
+                  
+                  # Получаем PID процесса и убиваем его
+                  CONTAINER_PID=$(docker inspect empathy-ai-bot --format '{{.State.Pid}}' 2>/dev/null || echo "")
+                  if [ -n "$CONTAINER_PID" ] && [ "$CONTAINER_PID" != "0" ]; then
+                    sudo kill -9 "$CONTAINER_PID" 2>/dev/null || true
+                    sleep 1
+                  fi
+                  
                   docker stop empathy-ai-bot 2>/dev/null || true
                   docker rm -f empathy-ai-bot 2>/dev/null || true
                   
@@ -310,6 +387,14 @@ jobs:
               # Откатываемся к стабильной версии
               if [ -n "$CURRENT_IMAGE" ]; then
                 echo "🔙 Откатываемся к предыдущей версии: $CURRENT_IMAGE"
+                
+                # Получаем PID процесса и убиваем его
+                CONTAINER_PID=$(docker inspect empathy-ai-bot --format '{{.State.Pid}}' 2>/dev/null || echo "")
+                if [ -n "$CONTAINER_PID" ] && [ "$CONTAINER_PID" != "0" ]; then
+                  sudo kill -9 "$CONTAINER_PID" 2>/dev/null || true
+                  sleep 1
+                fi
+                
                 docker stop empathy-ai-bot 2>/dev/null || true
                 docker rm -f empathy-ai-bot 2>/dev/null || true
                 
