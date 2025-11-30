@@ -44,7 +44,7 @@ def log_prompt(chat_id: int, prompt: list[dict], prompt_type: str = "MESSAGE"):
 async def get_llm_response(chat_id: int, message_text: str) -> tuple[str | None, User]:
     """
     Получает ответ от LLM БЕЗ сохранения в контекст.
-    
+
     Эта функция НЕ сохраняет диалог в базу данных. Используйте save_to_context_and_format()
     для сохранения результата после подтверждения, что ответ нужен пользователю.
 
@@ -111,19 +111,19 @@ async def get_llm_response(chat_id: int, message_text: str) -> tuple[str | None,
         return None, user
 
     logger.debug(f"LLM_RAWOUTPUT{chat_id}:{llm_msg}")
-    
+
     return llm_msg, user
 
 
 async def save_to_context_and_format(
-    chat_id: int, 
-    user: User, 
-    user_message: str, 
+    chat_id: int,
+    user: User,
+    user_message: str,
     llm_response: str
 ) -> str:
     """
     Сохраняет диалог в контекст и форматирует ответ для Telegram.
-    
+
     Вызывайте эту функцию ТОЛЬКО если уверены, что ответ будет показан пользователю.
 
     Args:
@@ -161,7 +161,7 @@ async def save_to_context_and_format(
 async def process_user_message(chat_id: int, message_text: str) -> str | None:
     """
     Обрабатывает сообщение пользователя через LLM.
-    
+
     УСТАРЕВШАЯ функция для обратной совместимости.
     Для новой логики с буфером используйте get_llm_response() + save_to_context_and_format().
 
@@ -173,10 +173,10 @@ async def process_user_message(chat_id: int, message_text: str) -> str | None:
         Отформатированный ответ от LLM или None при ошибке
     """
     llm_response, user = await get_llm_response(chat_id, message_text)
-    
+
     if llm_response is None:
         return None
-    
+
     return await save_to_context_and_format(chat_id, user, message_text, llm_response)
 
 

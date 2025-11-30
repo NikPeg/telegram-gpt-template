@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class MessageBuffer:
     """
     Буфер для накопления быстрых сообщений от одного пользователя.
-    
+
     Если пользователь отправляет несколько сообщений подряд, пока бот обрабатывает
     первое, все последующие накапливаются в буфере и обрабатываются одним запросом.
     """
@@ -55,10 +55,9 @@ class MessageBuffer:
                     f"(всего в буфере: {len(self.user_states[chat_id]['buffer'])})"
                 )
                 return False
-            else:
-                # Начинаем новую обработку
-                self.user_states[chat_id]["processing"] = True
-                return True
+            # Начинаем новую обработку
+            self.user_states[chat_id]["processing"] = True
+            return True
 
     async def peek_buffered_messages(self, chat_id: int) -> list[str]:
         """
@@ -88,7 +87,7 @@ class MessageBuffer:
     async def get_buffered_messages(self, chat_id: int) -> list[str]:
         """
         Получает все накопленные сообщения и очищает буфер.
-        
+
         УСТАРЕВШИЙ метод. Используйте peek_buffered_messages() + clear_buffer().
 
         Args:

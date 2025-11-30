@@ -14,7 +14,6 @@ from database import User
 from services.llm_service import (
     get_llm_response,
     process_user_image,
-    process_user_message,
     process_user_video,
     save_to_context_and_format,
 )
@@ -148,7 +147,7 @@ async def handle_text_message(message: types.Message):
                         start += 4096
 
                     logger.info(f"LLM{message.chat.id} - {converted_response}")
-                    
+
                     # ТОЛЬКО СЕЙЧАС очищаем буфер после успешной обработки
                     await message_buffer.clear_buffer(message.chat.id)
                 else:
