@@ -410,12 +410,52 @@ async def handle_voice_message(message: types.Message):
     )
 
 
+@dp.message(F.animation)
+async def handle_animation_message(message: types.Message):
+    """Обработка GIF-анимаций."""
+    # Игнорируем сообщения из ADMIN_CHAT
+    if message.chat.id == ADMIN_CHAT:
+        return
+
+    # В групповых чатах отвечаем только на упоминания
+    if not await should_respond_in_chat(message):
+        logger.debug(f"CHAT{message.chat.id}: GIF без упоминания бота, игнорируем")
+        return
+
+    logger.info(f"USER{message.chat.id} отправил GIF, не обрабатываем")
+    await message.answer(MESSAGES["unknown_message"])
+
+
+@dp.message(F.document)
+async def handle_document_message(message: types.Message):
+    """Обработка документов и файлов."""
+    # Игнорируем сообщения из ADMIN_CHAT
+    if message.chat.id == ADMIN_CHAT:
+        return
+
+    # В групповых чатах отвечаем только на упоминания
+    if not await should_respond_in_chat(message):
+        logger.debug(f"CHAT{message.chat.id}: документ без упоминания бота, игнорируем")
+        return
+
+    logger.info(f"USER{message.chat.id} отправил документ, не обрабатываем")
+    await message.answer(MESSAGES["unknown_message"])
+
+
 @dp.message()
 async def unknown_message(message: types.Message):
     """Обработка неизвестных типов сообщений."""
     # Игнорируем сообщения из ADMIN_CHAT
     if message.chat.id == ADMIN_CHAT:
         logger.debug(f"Игнорируем сообщение из ADMIN_CHAT: {message.text}")
+        return
+
+    # В групповых чатах отвечаем только на упоминания
+    if not await should_respond_in_chat(message):
+        logger.debug(
+            f"CHAT{message.chat.id}: неизвестный тип ({message.content_type}) "
+            f"без упоминания бота, игнорируем"
+        )
         return
 
     logger.warning(
