@@ -63,10 +63,10 @@ async def send_reminder_to_user(user_id: int):
     current_date = now_msk.strftime("%Y-%m-%d %H:%M:%S")
     weekday = WEEKDAY_NAMES[now_msk.weekday()]
 
-    # Формируем информацию об имени пользователя если она доступна
+    # Формируем информацию об имени пользователя/чата если оно известно
     username_replacement = ""
-    if conversation.name and conversation.name != "Not_of_registration":
-        username_replacement = f"Имя пользователя: {conversation.name}"
+    if conversation.name:
+        username_replacement = f"Имя собеседника: {conversation.name}"
 
     # Выбираем случайный тип напоминания
     reminder_type = random.choice(list(REMINDER_PROMPTS.keys()))

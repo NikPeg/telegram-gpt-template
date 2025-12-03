@@ -70,9 +70,9 @@ async def get_llm_response(
     )
     system_content = DEFAULT_PROMPT.replace("{CURRENTDATE}", current_date)
 
-    # Добавляем имя пользователя если оно есть и не "Not_of_registration"
-    if conversation.name and conversation.name != "Not_of_registration":
-        username_info = f"6. Имя пользователя: {conversation.name}"
+    # Добавляем имя пользователя/чата если оно известно
+    if conversation.name:
+        username_info = f"6. Имя собеседника: {conversation.name}"
         system_content = system_content.replace("{USERNAME}", username_info)
     else:
         system_content = system_content.replace("{USERNAME}", "")
@@ -353,8 +353,9 @@ async def process_user_video(
         )
         system_content = DEFAULT_PROMPT.replace("{CURRENTDATE}", current_date)
 
-        if conversation.name and conversation.name != "Not_of_registration":
-            username_info = f"6. Имя пользователя: {conversation.name}"
+        # Добавляем имя пользователя/чата если оно известно
+        if conversation.name:
+            username_info = f"6. Имя собеседника: {conversation.name}"
             system_content = system_content.replace("{USERNAME}", username_info)
         else:
             system_content = system_content.replace("{USERNAME}", "")

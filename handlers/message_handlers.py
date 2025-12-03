@@ -38,23 +38,34 @@ async def handle_text_message(message: types.Message):
     logger.info(f"USER{message.chat.id}TOLLM:{message.text}")
     await forward_to_debug(message.chat.id, message.message_id)
 
-    # Обновляем имя пользователя в базе данных (если изменилось)
+    # Обновляем имя пользователя/чата в базе данных (если изменилось)
     conversation = Conversation(message.chat.id)
     await conversation.get_from_db()
-    if message.from_user:
-        new_name = (
-            message.from_user.first_name
-            if message.from_user.first_name
-            else (
-                message.from_user.username
-                if message.from_user.username
-                else "Not_of_registration"
+    
+    # Определяем новое имя в зависимости от типа чата
+    if message.chat.id < 0:
+        # Для групповых чатов используем название чата
+        new_name = message.chat.title or ""
+    else:
+        # Для личных чатов используем имя пользователя
+        if message.from_user:
+            new_name = (
+                message.from_user.first_name
+                if message.from_user.first_name
+                else (
+                    message.from_user.username
+                    if message.from_user.username
+                    else ""
+                )
             )
-        )
-        if conversation.name != new_name and new_name != "Not_of_registration":
-            conversation.name = new_name
-            await conversation.update_in_db()
-            logger.debug(f"USER{message.chat.id} имя обновлено: {new_name}")
+        else:
+            new_name = ""
+    
+    # Обновляем имя, если оно изменилось и не пустое
+    if conversation.name != new_name and new_name:
+        conversation.name = new_name
+        await conversation.update_in_db()
+        logger.debug(f"{'CHAT' if message.chat.id < 0 else 'USER'}{message.chat.id} имя обновлено: {new_name}")
 
     # Добавляем сообщение в буфер
     should_process = await message_buffer.add_message(message.chat.id, message.text)
@@ -203,23 +214,9 @@ async def handle_photo_message(message: types.Message):
     logger.info(f"USER{message.chat.id} отправил изображение")
     await forward_to_debug(message.chat.id, message.message_id)
 
-    # Обновляем имя пользователя в базе данных (если изменилось)
+    # Получаем conversation из БД (имя не обновляем для медиа-сообщений)
     conversation = Conversation(message.chat.id)
     await conversation.get_from_db()
-    if message.from_user:
-        new_name = (
-            message.from_user.first_name
-            if message.from_user.first_name
-            else (
-                message.from_user.username
-                if message.from_user.username
-                else "Not_of_registration"
-            )
-        )
-        if conversation.name != new_name and new_name != "Not_of_registration":
-            conversation.name = new_name
-            await conversation.update_in_db()
-            logger.debug(f"USER{message.chat.id} имя обновлено: {new_name}")
 
     # Запускаем индикатор печати
     typing_task = asyncio.create_task(keep_typing(message.chat.id))
@@ -299,23 +296,9 @@ async def handle_video_message(message: types.Message):
     # Пересылаем в чат админов
     await forward_to_debug(message.chat.id, message.message_id)
 
-    # Обновляем имя пользователя в базе данных (если изменилось)
+    # Получаем conversation из БД (имя не обновляем для медиа-сообщений)
     conversation = Conversation(message.chat.id)
     await conversation.get_from_db()
-    if message.from_user:
-        new_name = (
-            message.from_user.first_name
-            if message.from_user.first_name
-            else (
-                message.from_user.username
-                if message.from_user.username
-                else "Not_of_registration"
-            )
-        )
-        if conversation.name != new_name and new_name != "Not_of_registration":
-            conversation.name = new_name
-            await conversation.update_in_db()
-            logger.debug(f"USER{message.chat.id} имя обновлено: {new_name}")
 
     # Запускаем индикатор печати
     typing_task = asyncio.create_task(keep_typing(message.chat.id))

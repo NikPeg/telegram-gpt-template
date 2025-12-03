@@ -86,13 +86,18 @@ async def registration(message: types.Message):
         referral_code = args[1]
         logger.info(f"Переход по реф.ссылке, код: {referral_code}")
 
-    user = message.from_user
-    # Используем имя пользователя (first_name), если нет - username, если и его нет - placeholder
-    user_name = (
-        user.first_name
-        if user and user.first_name
-        else (user.username if user and user.username else "Not_of_registration")
-    )
+    # Определяем имя в зависимости от типа чата
+    if chat_id < 0:
+        # Для групповых чатов используем название чата
+        user_name = message.chat.title or ""
+    else:
+        # Для личных чатов используем имя пользователя
+        user = message.from_user
+        user_name = (
+            user.first_name
+            if user and user.first_name
+            else (user.username if user and user.username else "")
+        )
 
     conversation = Conversation(int(message.chat.id), user_name)
     await conversation.save_for_db()
