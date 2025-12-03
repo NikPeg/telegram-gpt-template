@@ -7,7 +7,6 @@ import random
 from datetime import datetime, timedelta, timezone
 
 import telegramify_markdown
-from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramForbiddenError
 
 import database
@@ -21,7 +20,7 @@ from config import (
 from database import Conversation, delete_chat_data
 from services.llm_client import send_request_to_openrouter
 from services.llm_service import log_prompt
-from utils import forward_to_debug
+from utils import forward_to_debug, send_message_with_fallback
 
 # Названия дней недели на русском
 WEEKDAY_NAMES = {
@@ -131,10 +130,9 @@ async def send_reminder_to_user(user_id: int):
         while start < len(converted):
             chunk = converted[start : start + 4096]
             try:
-                generated_message = await bot.send_message(
+                generated_message = await send_message_with_fallback(
                     chat_id=user_id,
                     text=chunk,
-                    parse_mode=ParseMode.MARKDOWN_V2,
                 )
                 await forward_to_debug(user_id, generated_message.message_id)
             except TelegramForbiddenError:
@@ -158,17 +156,6 @@ async def send_reminder_to_user(user_id: int):
                     await conversation.update_in_db()
                     logger.warning(f"USER{user_id} заблокировал чатбота")
                 raise  # Выбрасываем исключение для корректного подсчета
-            except Exception as e:
-                # Пробуем отправить без форматирования
-                try:
-                    generated_message = await bot.send_message(
-                        chat_id=user_id,
-                        text=chunk,
-                    )
-                    await forward_to_debug(user_id, generated_message.message_id)
-                except Exception:
-                    pass
-                logger.error(f"LLM{user_id} - {e}", exc_info=True)
 
             start += 4096
 

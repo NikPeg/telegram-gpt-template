@@ -5,7 +5,6 @@
 import asyncio
 
 from aiogram import F, types
-from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramForbiddenError
 
 from bot_instance import bot, dp
@@ -18,7 +17,12 @@ from services.llm_service import (
     save_to_context_and_format,
 )
 from services.message_buffer import message_buffer
-from utils import forward_to_debug, keep_typing, should_respond_in_chat
+from utils import (
+    forward_to_debug,
+    keep_typing,
+    send_message_with_fallback,
+    should_respond_in_chat,
+)
 
 
 def get_user_display_name(message: types.Message) -> str:
@@ -172,8 +176,9 @@ async def handle_text_message(message: types.Message):
                     while start < len(converted_response):
                         chunk = converted_response[start : start + 4096]
                         try:
-                            generated_message = await message.answer(
-                                chunk, parse_mode=ParseMode.MARKDOWN_V2
+                            generated_message = await send_message_with_fallback(
+                                chat_id=message.chat.id,
+                                text=chunk,
                             )
                             await forward_to_debug(
                                 message.chat.id, generated_message.message_id
@@ -185,16 +190,6 @@ async def handle_text_message(message: types.Message):
                                 f"USER{message.chat.id} заблокировал чатбота"
                             )
                             return
-                        except Exception as e:
-                            # Пробуем отправить без форматирования
-                            try:
-                                generated_message = await message.answer(chunk)
-                                await forward_to_debug(
-                                    message.chat.id, generated_message.message_id
-                                )
-                            except Exception:
-                                pass
-                            logger.error(f"LLM{message.chat.id} - {e}", exc_info=True)
 
                         start += 4096
 
@@ -283,8 +278,9 @@ async def handle_photo_message(message: types.Message):
         while start < len(converted_response):
             chunk = converted_response[start : start + 4096]
             try:
-                generated_message = await message.answer(
-                    chunk, parse_mode=ParseMode.MARKDOWN_V2
+                generated_message = await send_message_with_fallback(
+                    chat_id=message.chat.id,
+                    text=chunk,
                 )
                 await forward_to_debug(message.chat.id, generated_message.message_id)
             except TelegramForbiddenError:
@@ -294,16 +290,6 @@ async def handle_photo_message(message: types.Message):
                 await conversation.update_in_db()
                 logger.warning(f"USER{message.chat.id} заблокировал чатбота")
                 return
-            except Exception as e:
-                # Пробуем отправить без форматирования
-                try:
-                    generated_message = await message.answer(chunk)
-                    await forward_to_debug(
-                        message.chat.id, generated_message.message_id
-                    )
-                except Exception:
-                    pass
-                logger.error(f"LLM{message.chat.id} - {e}", exc_info=True)
 
             start += 4096
 
@@ -378,8 +364,9 @@ async def handle_video_message(message: types.Message):
         while start < len(converted_response):
             chunk = converted_response[start : start + 4096]
             try:
-                generated_message = await message.answer(
-                    chunk, parse_mode=ParseMode.MARKDOWN_V2
+                generated_message = await send_message_with_fallback(
+                    chat_id=message.chat.id,
+                    text=chunk,
                 )
                 await forward_to_debug(message.chat.id, generated_message.message_id)
             except TelegramForbiddenError:
@@ -389,16 +376,6 @@ async def handle_video_message(message: types.Message):
                 await conversation.update_in_db()
                 logger.warning(f"USER{message.chat.id} заблокировал чатбота")
                 return
-            except Exception as e:
-                # Пробуем отправить без форматирования
-                try:
-                    generated_message = await message.answer(chunk)
-                    await forward_to_debug(
-                        message.chat.id, generated_message.message_id
-                    )
-                except Exception:
-                    pass
-                logger.error(f"LLM{message.chat.id} - {e}", exc_info=True)
 
             start += 4096
 

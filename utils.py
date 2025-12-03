@@ -5,6 +5,7 @@
 import asyncio
 
 from aiogram import types
+from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramMigrateToChat
 
 from bot_instance import bot
@@ -159,3 +160,42 @@ async def should_respond_in_chat(message: types.Message) -> bool:
                         return True
 
     return False
+
+
+async def send_message_with_fallback(
+    chat_id: int, text: str, **kwargs
+) -> types.Message:
+    """
+    Отправляет сообщение с MARKDOWN_V2 форматированием.
+    Если возникает ошибка парсинга, отправляет тот же текст без форматирования
+    (с видимыми экранирующими символами).
+
+    Args:
+        chat_id: ID чата для отправки
+        text: Текст сообщения (уже сконвертированный через telegramify_markdown)
+        **kwargs: Дополнительные параметры для send_message
+
+    Returns:
+        Отправленное сообщение
+
+    Raises:
+        Exception: Если не удалось отправить сообщение ни с одним вариантом
+    """
+    try:
+        return await bot.send_message(
+            chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN_V2, **kwargs
+        )
+    except Exception as e:
+        # Пробуем отправить без форматирования (с видимым экранированием)
+        try:
+            logger.warning(
+                f"CHAT{chat_id} - ошибка парсинга Markdown, "
+                f"отправляем с экранированием: {e}"
+            )
+            # Убираем parse_mode из kwargs если он там есть
+            kwargs.pop("parse_mode", None)
+            return await bot.send_message(chat_id=chat_id, text=text, **kwargs)
+        except Exception:
+            # Если и это не сработало - пробрасываем исходную ошибку
+            logger.error(f"CHAT{chat_id} - не удалось отправить сообщение: {e}")
+            raise
