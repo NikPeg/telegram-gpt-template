@@ -66,7 +66,9 @@ async def send_reminder_to_user(user_id: int):
     # Формируем информацию об имени пользователя/чата если оно известно
     username_replacement = ""
     if conversation.name:
-        username_replacement = f"Имя собеседника: {conversation.name}"
+        # Для чатов (id < 0) указываем "Название чата", для личных - "Имя собеседника"
+        label = "Название чата" if user_id < 0 else "Имя собеседника"
+        username_replacement = f"{label}: {conversation.name}"
 
     # Выбираем случайный тип напоминания
     reminder_type = random.choice(list(REMINDER_PROMPTS.keys()))

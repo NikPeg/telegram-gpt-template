@@ -72,7 +72,9 @@ async def get_llm_response(
 
     # Добавляем имя пользователя/чата если оно известно
     if conversation.name:
-        username_info = f"6. Имя собеседника: {conversation.name}"
+        # Для чатов (id < 0) указываем "Название чата", для личных - "Имя собеседника"
+        label = "Название чата" if chat_id < 0 else "Имя собеседника"
+        username_info = f"6. {label}: {conversation.name}"
         system_content = system_content.replace("{USERNAME}", username_info)
     else:
         system_content = system_content.replace("{USERNAME}", "")
@@ -357,7 +359,9 @@ async def process_user_video(
 
         # Добавляем имя пользователя/чата если оно известно
         if conversation.name:
-            username_info = f"6. Имя собеседника: {conversation.name}"
+            # Для чатов (id < 0) указываем "Название чата", для личных - "Имя собеседника"
+            label = "Название чата" if chat_id < 0 else "Имя собеседника"
+            username_info = f"6. {label}: {conversation.name}"
             system_content = system_content.replace("{USERNAME}", username_info)
         else:
             system_content = system_content.replace("{USERNAME}", "")
