@@ -240,6 +240,88 @@ async def get_total_users_count() -> int:
         return result[0] if result else 0
 
 
+async def get_top_active_users(limit: int = 10) -> list[dict]:
+    """
+    Получает топ самых активных пользователей на основе средней и максимальной
+    активности по дням.
+
+    Комбинированный балл рассчитывается как:
+    score = avg_messages_per_day * 0.6 + max_messages_per_day * 0.4
+
+    Args:
+        limit: Количество пользователей в топе (по умолчанию 10)
+
+    Returns:
+        Список словарей с информацией о пользователях:
+        - user_id: ID пользователя
+        - username: Имя пользователя (может быть None)
+        - total_messages: Общее количество сообщений
+        - days_active: Количество дней активности
+        - avg_messages_per_day: Среднее количество сообщений в день
+        - max_messages_per_day: Максимальное количество сообщений в день
+        - score: Комбинированный балл активности
+    """
+    user_stats = []
+
+    async with aiosqlite.connect(DATABASE_NAME) as db:
+        # Получаем всех пользователей с положительными ID (личные чаты)
+        cursor = await db.execute(
+            "SELECT id, name FROM conversations WHERE id > 0"
+        )
+        users = await cursor.fetchall()
+
+        for user_id, username in users:
+            # Получаем timestamps для пользователя
+            timestamps_cursor = await db.execute(
+                """
+                SELECT timestamp FROM messages
+                WHERE user_id = ? AND timestamp IS NOT NULL AND role = 'user'
+                """,
+                (user_id,)
+            )
+            timestamps_rows = await timestamps_cursor.fetchall()
+
+            if not timestamps_rows:
+                continue
+
+            # Парсим timestamps и группируем по датам
+            messages_by_date = defaultdict(int)
+            for row in timestamps_rows:
+                try:
+                    dt = datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+                    date_key = dt.date()
+                    messages_by_date[date_key] += 1
+                except (ValueError, TypeError):
+                    continue
+
+            if not messages_by_date:
+                continue
+
+            # Вычисляем метрики
+            total_messages = sum(messages_by_date.values())
+            days_active = len(messages_by_date)
+            avg_messages_per_day = total_messages / days_active
+            max_messages_per_day = max(messages_by_date.values())
+
+            # Комбинированный балл: среднее (60%) + максимум (40%)
+            score = avg_messages_per_day * 0.6 + max_messages_per_day * 0.4
+
+            user_stats.append({
+                "user_id": user_id,
+                "username": username,
+                "total_messages": total_messages,
+                "days_active": days_active,
+                "avg_messages_per_day": avg_messages_per_day,
+                "max_messages_per_day": max_messages_per_day,
+                "score": score,
+            })
+
+    # Сортируем по комбинированному баллу
+    user_stats.sort(key=lambda x: x["score"], reverse=True)
+
+    return user_stats[:limit]
+
+
 async def generate_user_stats(
     user_id: int | None = None,
 ) -> tuple[BytesIO, BytesIO, int, int | None]:

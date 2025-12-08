@@ -15,7 +15,7 @@ from bot_instance import bot, dp
 from config import ADMIN_CHAT, MESSAGES, logger
 from database import Conversation
 from filters import UserIsAdmin
-from services.stats_service import generate_user_stats
+from services.stats_service import generate_user_stats, get_top_active_users
 from services.subscription_service import is_user_subscribed_to_all
 from states import AdminDispatch, AdminDispatchAll, AdminSetReminderTimes
 
@@ -195,6 +195,53 @@ async def cmd_stats(message: types.Message):
         await message.answer_photo(
             weekly_file, caption="Средняя статистика по дням недели"
         )
+
+        # Топ-10 активных пользователей (только если запрос по всем пользователям)
+        if not user_id:
+            top_users_msg = await message.answer(
+                "⏳ Собираю топ-10 самых активных пользователей..."
+            )
+
+            try:
+                top_users = await get_top_active_users(limit=10)
+
+                if top_users:
+                    top_users_text = "🏆 Топ-10 самых активных пользователей:\n\n"
+                    top_users_text += (
+                        "Рейтинг основан на среднем и максимальном количестве "
+                        "сообщений в день\n\n"
+                    )
+
+                    for idx, user_data in enumerate(top_users, 1):
+                        user_id_display = user_data["user_id"]
+                        username = user_data["username"] or "Без имени"
+                        total_msgs = user_data["total_messages"]
+                        avg_per_day = user_data["avg_messages_per_day"]
+                        max_per_day = user_data["max_messages_per_day"]
+                        days = user_data["days_active"]
+
+                        top_users_text += (
+                            f"{idx}. USER{user_id_display} ({username})\n"
+                            f"   📊 Всего сообщений: {total_msgs}\n"
+                            f"   📅 Дней активности: {days}\n"
+                            f"   📈 Среднее в день: {avg_per_day:.1f}\n"
+                            f"   🔥 Максимум в день: {max_per_day}\n\n"
+                        )
+
+                    await top_users_msg.edit_text(top_users_text)
+                else:
+                    await top_users_msg.edit_text(
+                        "❌ Нет данных об активных пользователях"
+                    )
+
+            except Exception as top_error:
+                logger.error(
+                    f"Ошибка при получении топ пользователей: {top_error}",
+                    exc_info=True,
+                )
+                await top_users_msg.edit_text(
+                    f"❌ Ошибка при сборе топа пользователей: {top_error}"
+                )
 
         # Проверка подписок пользователей и чатов (только если запрос по всем пользователям)
         if not user_id:
