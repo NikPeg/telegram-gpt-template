@@ -21,6 +21,7 @@
 - **[База данных →](docs/database.md)**
 - **[Миграции БД →](docs/migrations.md)**
 - **[CI/CD →](docs/ci-cd.md)**
+- **[Best Practices →](docs/best-practices.md)**
 - **[Решение проблем →](docs/troubleshooting.md)**
 
 ---
