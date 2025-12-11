@@ -393,4 +393,98 @@ class TestIntegration:
         # После первого исправления может понадобиться второе
         # Проверяем что хотя бы один _ экранирован
         assert '\\_' in fixed1
+    
+    def test_multiple_sequential_errors(self):
+        """
+        Тест для случая с несколькими последовательными ошибками.
+        Симулирует ситуацию когда в тексте несколько разных непарных символов.
+        """
+        # Исходный текст с несколькими проблемами
+        text = "Текст с __непарным подчеркиванием и еще *непарным жирным"
+        
+        # Первая ошибка: Underline
+        error1 = "Can't find end of Underline entity at byte offset 10"
+        char1, offset1 = parse_telegram_error(error1)
+        assert char1 == '__'
+        
+        fixed1 = fix_markdown_at_offset(text, char1, offset1)
+        assert '\\__' in fixed1
+        
+        # Вторая ошибка: Bold (после исправления первой)
+        # Offset изменился из-за добавления \
+        error2 = "Can't find end of Bold entity at byte offset 60"
+        char2, offset2 = parse_telegram_error(error2)
+        assert char2 == '*'
+        
+        fixed2 = fix_markdown_at_offset(fixed1, char2, offset2)
+        assert '\\*' in fixed2
+        
+        # Проверяем что оба символа экранированы
+        assert '\\__' in fixed2
+        assert '\\*' in fixed2
+    
+    def test_three_sequential_errors(self):
+        """Тест с тремя последовательными ошибками разных типов."""
+        # Текст с тремя разными непарными символами
+        text = "Начало _курсив без конца, потом *жирный без конца, и ~зачеркнутый без конца"
+        
+        # Исправляем последовательно
+        current = text
+        
+        # Ошибка 1: Italic
+        char1, _ = parse_telegram_error("Can't find end of Italic entity at byte offset 7")
+        current = fix_markdown_at_offset(current, char1, 7)
+        assert '\\_' in current
+        
+        # Ошибка 2: Bold
+        char2, _ = parse_telegram_error("Can't find end of Bold entity at byte offset 40")
+        current = fix_markdown_at_offset(current, char2, 40)
+        assert '\\*' in current
+        
+        # Ошибка 3: Strikethrough
+        char3, _ = parse_telegram_error("Can't find end of Strikethrough entity at byte offset 70")
+        current = fix_markdown_at_offset(current, char3, 70)
+        assert '\\~' in current
+        
+        # Все три символа должны быть экранированы
+        assert '\\_' in current
+        assert '\\*' in current
+        assert '\\~' in current
+    
+    def test_complex_message_with_multiple_errors(self):
+        """
+        Реальный кейс: длинное сообщение с несколькими разными типами непарных тегов.
+        """
+        # Имитация длинного сообщения от LLM с разными markdown тегами
+        text = (
+            "Привет! Вот твой ответ:\n\n"
+            "_Первый пункт без закрытия\n"
+            "Второй пункт с *правильным жирным*\n"
+            "Третий пункт с __подчеркиванием без конца\n"
+            "И еще текст с ~зачеркнутым без закрытия"
+        )
+        
+        # Последовательно исправляем все ошибки
+        current = text
+        errors_fixed = 0
+        
+        # Симулируем до 7 попыток исправления
+        test_errors = [
+            ("Can't find end of Italic entity at byte offset 35", '_', 35),
+            ("Can't find end of Underline entity at byte offset 120", '__', 120),
+            ("Can't find end of Strikethrough entity at byte offset 180", '~', 180),
+        ]
+        
+        for error_msg, expected_char, offset in test_errors:
+            char, parsed_offset = parse_telegram_error(error_msg)
+            assert char == expected_char
+            
+            current = fix_markdown_at_offset(current, char, offset)
+            errors_fixed += 1
+        
+        # Проверяем что все символы экранированы
+        assert errors_fixed == 3
+        assert current.count('\\_') >= 1  # Минимум один экранированный _
+        assert current.count('\\__') >= 1  # Минимум один экранированный __
+        assert current.count('\\~') >= 1  # Минимум один экранированный ~
 

@@ -525,19 +525,21 @@ def fix_nested_markdown(text: str) -> str:
 
 
 async def send_message_with_fallback(
-    chat_id: int, text: str, **kwargs
+    chat_id: int, text: str, max_fix_attempts: int = 7, **kwargs
 ) -> types.Message:
     """
     Отправляет сообщение с MARKDOWN_V2 форматированием.
 
     Стратегия при ошибке:
     1. Если бот заблокирован (Forbidden) - сразу пробрасываем ошибку
-    2. Если ошибка парсинга markdown - пробуем исправить и отправить снова
-    3. Если не помогло - отправляем без форматирования
+    2. Если ошибка парсинга markdown - пробуем исправить до max_fix_attempts раз
+    3. Если не помогло - пробуем общее исправление markdown
+    4. Если и это не помогло - отправляем без форматирования
 
     Args:
         chat_id: ID чата для отправки
         text: Текст сообщения (уже сконвертированный через telegramify_markdown)
+        max_fix_attempts: Максимальное количество попыток целенаправленного исправления
         **kwargs: Дополнительные параметры для send_message
 
     Returns:
@@ -547,95 +549,88 @@ async def send_message_with_fallback(
         TelegramForbiddenError: Если бот заблокирован пользователем
         Exception: Если не удалось отправить сообщение ни одним способом
     """
-    try:
-        return await bot.send_message(
-            chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN_V2, **kwargs
-        )
-    except TelegramForbiddenError:
-        # Бот заблокирован - сразу пробрасываем, не пытаемся исправить markdown
-        raise
-    except TelegramBadRequest as e:
-        # Проверяем, это ошибка парсинга markdown или что-то другое
-        error_message = str(e)
-        error_message_lower = error_message.lower()
-        
-        if "can't parse entities" in error_message_lower or "can't find end" in error_message_lower:
-            # Это ошибка парсинга - пробуем исправить
-            logger.warning(
-                f"CHAT{chat_id} - ошибка парсинга Markdown: {e}. "
-                f"Пробуем исправить markdown..."
+    current_text = text
+    
+    # Пытаемся отправить с целенаправленными исправлениями
+    for attempt in range(max_fix_attempts + 1):
+        try:
+            return await bot.send_message(
+                chat_id=chat_id, text=current_text, parse_mode=ParseMode.MARKDOWN_V2, **kwargs
             )
+        except TelegramForbiddenError:
+            # Бот заблокирован - сразу пробрасываем
+            raise
+        except TelegramBadRequest as e:
+            error_message = str(e)
+            error_message_lower = error_message.lower()
             
-            # Шаг 1: Пробуем целенаправленное исправление по информации из ошибки
+            # Проверяем, это ошибка парсинга markdown
+            if "can't parse entities" not in error_message_lower and "can't find end" not in error_message_lower:
+                # Это не ошибка парсинга - пробрасываем
+                raise
+            
+            # Это ошибка парсинга
+            if attempt == 0:
+                logger.warning(
+                    f"CHAT{chat_id} - ошибка парсинга Markdown: {e}. "
+                    f"Пробуем исправить markdown..."
+                )
+            
+            # Если исчерпали попытки целенаправленного исправления
+            if attempt >= max_fix_attempts:
+                logger.warning(
+                    f"CHAT{chat_id} - исчерпаны попытки целенаправленного исправления "
+                    f"({max_fix_attempts}). Пробуем общее исправление..."
+                )
+                break
+            
+            # Пробуем целенаправленное исправление
             problem_char, byte_offset = parse_telegram_error(error_message)
             
             if problem_char and byte_offset is not None:
-                try:
-                    logger.info(
-                        f"CHAT{chat_id} - обнаружен проблемный символ '{problem_char}' "
-                        f"на позиции {byte_offset}. Пробуем целенаправленное исправление..."
-                    )
-                    fixed_text = fix_markdown_at_offset(text, problem_char, byte_offset)
-                    
-                    return await bot.send_message(
-                        chat_id=chat_id, text=fixed_text, parse_mode=ParseMode.MARKDOWN_V2, **kwargs
-                    )
-                except TelegramForbiddenError:
-                    raise
-                except TelegramBadRequest as e2:
-                    # Целенаправленное исправление не помогло полностью
-                    # Возможно нужно еще раз, или есть другие проблемы
-                    logger.info(
-                        f"CHAT{chat_id} - целенаправленное исправление не помогло полностью: {e2}. "
-                        f"Пробуем общее исправление..."
-                    )
-                    # Переходим к шагу 2
-                    fixed_text = text
-                except Exception as e2:
-                    logger.warning(
-                        f"CHAT{chat_id} - ошибка при целенаправленном исправлении: {e2}. "
-                        f"Пробуем общее исправление..."
-                    )
-                    fixed_text = text
-            else:
-                # Не удалось распарсить ошибку
                 logger.info(
-                    f"CHAT{chat_id} - не удалось распарсить ошибку Telegram. "
+                    f"CHAT{chat_id} - попытка {attempt + 1}/{max_fix_attempts}: "
+                    f"обнаружен проблемный символ '{problem_char}' на позиции {byte_offset}"
+                )
+                current_text = fix_markdown_at_offset(current_text, problem_char, byte_offset)
+            else:
+                # Не удалось распарсить ошибку - переходим к общему исправлению
+                logger.info(
+                    f"CHAT{chat_id} - не удалось распарсить ошибку. "
                     f"Пробуем общее исправление..."
                 )
-                fixed_text = text
-            
-            # Шаг 2: Общее исправление markdown
-            try:
-                fixed_text = fix_nested_markdown(fixed_text)
-                
-                return await bot.send_message(
-                    chat_id=chat_id, text=fixed_text, parse_mode=ParseMode.MARKDOWN_V2, **kwargs
-                )
-            except TelegramForbiddenError:
-                # Даже после исправления получили Forbidden - пробрасываем
-                raise
-            except Exception as e2:
-                # Исправление не помогло - отправляем без форматирования
-                try:
-                    logger.warning(
-                        f"CHAT{chat_id} - исправление не помогло: {e2}. "
-                        f"Отправляем без форматирования."
-                    )
-                    kwargs.pop("parse_mode", None)
-                    return await bot.send_message(chat_id=chat_id, text=text, **kwargs)
-                except TelegramForbiddenError:
-                    # И здесь Forbidden - пробрасываем
-                    raise
-                except Exception:
-                    # Если и это не сработало - пробрасываем исходную ошибку
-                    logger.error(
-                        f"CHAT{chat_id} - не удалось отправить сообщение: {e}"
-                    )
-                    raise
-        else:
-            # Это не ошибка парсинга - пробрасываем как есть
+                break
+        except Exception:
+            # Любая другая ошибка - пробрасываем
             raise
-    except Exception:
-        # Любая другая ошибка - пробрасываем
+    
+    # Если дошли сюда, значит целенаправленные исправления не помогли
+    # Пробуем общее исправление markdown
+    try:
+        fixed_text = fix_nested_markdown(current_text)
+        logger.info(
+            f"CHAT{chat_id} - применяем общее исправление markdown..."
+        )
+        
+        return await bot.send_message(
+            chat_id=chat_id, text=fixed_text, parse_mode=ParseMode.MARKDOWN_V2, **kwargs
+        )
+    except TelegramForbiddenError:
         raise
+    except Exception as e:
+        # Общее исправление не помогло - отправляем без форматирования
+        try:
+            logger.warning(
+                f"CHAT{chat_id} - общее исправление не помогло: {e}. "
+                f"Отправляем без форматирования."
+            )
+            kwargs.pop("parse_mode", None)
+            return await bot.send_message(chat_id=chat_id, text=text, **kwargs)
+        except TelegramForbiddenError:
+            raise
+        except Exception as final_error:
+            logger.error(
+                f"CHAT{chat_id} - не удалось отправить сообщение: {final_error}"
+            )
+            raise
+
