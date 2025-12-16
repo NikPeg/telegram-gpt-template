@@ -240,6 +240,22 @@ async def get_total_users_count() -> int:
         return result[0] if result else 0
 
 
+async def get_inactive_users_count() -> int:
+    """
+    Получает количество неактивных пользователей в базе данных.
+    Использует поле is_active для оптимизации (вместо запросов к messages).
+
+    Returns:
+        Количество неактивных пользователей (is_active = 0).
+    """
+    async with aiosqlite.connect(DATABASE_NAME) as db:
+        cursor = await db.cursor()
+        # Получаем количество неактивных пользователей
+        await cursor.execute("SELECT COUNT(*) FROM conversations WHERE is_active = 0")
+        result = await cursor.fetchone()
+        return result[0] if result else 0
+
+
 async def get_top_active_users(limit: int = 10) -> list[dict]:
     """
     Получает топ самых активных пользователей на основе средней и максимальной

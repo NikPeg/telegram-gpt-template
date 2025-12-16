@@ -45,9 +45,10 @@ async def test_db():
                 sub_period INTEGER,
                 is_admin INTEGER,
                 active_messages_count INTEGER,
-                reminder_times JSON,
+                reminder_times TEXT,
                 subscription_verified INTEGER,
-                referral_code TEXT DEFAULT NULL
+                referral_code TEXT DEFAULT NULL,
+                is_active INTEGER DEFAULT 1
             )
         """)
 

@@ -42,6 +42,7 @@ class Conversation:
         reminder_times: Список времен для напоминаний (формат HH:MM)
         subscription_verified: Статус верификации подписки
         referral_code: Реферальный код, по которому пользователь перешел в бота
+        is_active: Флаг активности пользователя (1 = активен, 0 = неактивен)
     """
 
     def __init__(
@@ -58,6 +59,7 @@ class Conversation:
         reminder_times=None,
         subscription_verified=None,
         referral_code=None,
+        is_active=1,
     ):
         if prompt is None:
             prompt = []
@@ -79,6 +81,7 @@ class Conversation:
         )
         self.subscription_verified = subscription_verified  # NULL = не проверялось, 0 = не подписан, 1 = подписан
         self.referral_code = referral_code  # Реферальный код для отслеживания источника регистрации
+        self.is_active = is_active  # 1 = активен (отвечал в течение INACTIVE_USER_DAYS дней), 0 = неактивен
 
     def __repr__(self):
         return f"Conversation(id={self.id}, \n name={self.name}, \n prompt={self.prompt}, \n remind_of_yourself={self.remind_of_yourself}, \n sub_lvl={self.sub_lvl}, \n sub_id={self.sub_id}, \n sub_period={self.sub_period}, \n is_admin={self.is_admin})"
@@ -104,6 +107,7 @@ class Conversation:
                 )
                 self.subscription_verified = row[10] if len(row) > 10 else None
                 self.referral_code = row[11] if len(row) > 11 else None
+                self.is_active = row[12] if len(row) > 12 else 1
 
     async def __call__(self, user_id):
         async with aiosqlite.connect(DATABASE_NAME) as db:
@@ -127,6 +131,7 @@ class Conversation:
                     else ["19:15"],
                     subscription_verified=row[10] if len(row) > 10 else None,
                     referral_code=row[11] if len(row) > 11 else None,
+                    is_active=row[12] if len(row) > 12 else 1,
                 )
             return None
 
@@ -142,8 +147,8 @@ class Conversation:
         async with aiosqlite.connect(DATABASE_NAME) as db:
             cursor = await db.cursor()
             sql_insert = """
-                        INSERT INTO conversations (id, name, prompt, remind_of_yourself, sub_lvl, sub_id, sub_period, is_admin, active_messages_count, reminder_times, subscription_verified, referral_code)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO conversations (id, name, prompt, remind_of_yourself, sub_lvl, sub_id, sub_period, is_admin, active_messages_count, reminder_times, subscription_verified, referral_code, is_active)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """
             values = (
                 self.id,
@@ -158,6 +163,7 @@ class Conversation:
                 json.dumps(self.reminder_times),
                 self.subscription_verified,
                 self.referral_code,
+                self.is_active,
             )
             await cursor.execute(sql_insert, values)
             await db.commit()
@@ -249,7 +255,7 @@ class Conversation:
             cursor = await db.cursor()
             sql_query = """
                 UPDATE conversations
-                SET name = ?, prompt = ?, remind_of_yourself = ?, sub_lvl = ?, sub_id = ?, sub_period = ?, is_admin = ?, active_messages_count = ?, reminder_times = ?, subscription_verified = ?, referral_code = ?
+                SET name = ?, prompt = ?, remind_of_yourself = ?, sub_lvl = ?, sub_id = ?, sub_period = ?, is_admin = ?, active_messages_count = ?, reminder_times = ?, subscription_verified = ?, referral_code = ?, is_active = ?
                 WHERE id = ?
             """
             values = (
@@ -264,6 +270,7 @@ class Conversation:
                 json.dumps(self.reminder_times),
                 self.subscription_verified,
                 self.referral_code,
+                self.is_active,
                 self.id,
             )
             await cursor.execute(sql_query, values)
@@ -425,7 +432,8 @@ async def check_db():
                     active_messages_count INTEGER,
                     reminder_times TEXT DEFAULT '["19:15"]',
                     subscription_verified INTEGER,
-                    referral_code TEXT DEFAULT NULL
+                    referral_code TEXT DEFAULT NULL,
+                    is_active INTEGER DEFAULT 1
                 )
                 """
             )
@@ -454,13 +462,21 @@ async def get_past_dates():
     - remind_of_yourself = "0" -> напоминания отключены
     - remind_of_yourself = NULL -> еще не отправлялось, можно отправить
     - remind_of_yourself = timestamp -> проверяем, что прошел минимум 1 час
+    - is_active = 0 -> пользователь неактивен (не отвечал более INACTIVE_USER_DAYS дней)
+
+    Оптимизация:
+    - Использует поле is_active для первичной фильтрации (если INACTIVE_USER_DAYS > 0)
+    - Обновляет is_active при проверке активности для каждого пользователя
+    - Все обновления коммитятся одним db.commit() в конце функции
 
     Returns:
         Список user_id пользователей, которым нужно отправить напоминание
     """
-    from config import logger
+    from config import INACTIVE_USER_DAYS, logger
 
     past_user_ids = []
+    updates_to_commit = []  # Список обновлений is_active для коммита в конце
+
     async with aiosqlite.connect(DATABASE_NAME) as db:
         async with db.execute("PRAGMA journal_mode=WAL;") as cursor:
             await cursor.fetchone()
@@ -474,22 +490,94 @@ async def get_past_dates():
             f"Текущее время МСК: {now_msk.strftime('%Y-%m-%d %H:%M:%S')} ({current_hour:02d}:{current_minute:02d})"
         )
 
-        query = "SELECT id, reminder_times, remind_of_yourself FROM conversations"
+        # Формируем запрос с учетом is_active для оптимизации
+        if INACTIVE_USER_DAYS > 0:
+            # Фильтруем только активных пользователей (если проверка активности включена)
+            query = "SELECT id, reminder_times, remind_of_yourself, is_active FROM conversations WHERE is_active = 1"
+        else:
+            # Если проверка активности отключена, проверяем всех
+            query = "SELECT id, reminder_times, remind_of_yourself, is_active FROM conversations"
 
         async with db.execute(query) as cursor:
             results = await cursor.fetchall()
 
-        logger.debug(f"Всего пользователей в БД: {len(results)}")
+        logger.debug(f"Всего пользователей в БД для проверки: {len(results)}")
+
+        # Вычисляем пороговую дату для активности (если проверка включена)
+        threshold_date = None
+        if INACTIVE_USER_DAYS > 0:
+            threshold_date = now_msk.replace(tzinfo=None) - timedelta(days=INACTIVE_USER_DAYS)
 
         for row in results:
             user_id = row[0]
             reminder_times_json = row[1]
             remind_of_yourself = row[2]
+            current_is_active = row[3] if len(row) > 3 else 1
 
             # Пропускаем пользователей с отключенными напоминаниями
             if remind_of_yourself == "0":
                 logger.debug(f"USER{user_id}: напоминания отключены")
                 continue
+
+            # Проверяем активность пользователя (если проверка включена)
+            if INACTIVE_USER_DAYS > 0:
+                # Получаем время последнего сообщения от пользователя
+                cursor = await db.execute(
+                    """
+                    SELECT MAX(timestamp) FROM messages
+                    WHERE user_id = ? AND role = 'user' AND timestamp IS NOT NULL
+                    """,
+                    (user_id,),
+                )
+                result = await cursor.fetchone()
+                last_message_time = result[0] if result else None
+
+                # Определяем активность пользователя
+                is_active = 1  # По умолчанию активен
+
+                if last_message_time:
+                    # Есть сообщения - проверяем дату последнего
+                    try:
+                        last_dt = datetime.strptime(last_message_time, "%Y-%m-%d %H:%M:%S")
+                        if last_dt < threshold_date:
+                            is_active = 0  # Неактивен
+                    except (ValueError, TypeError):
+                        # Некорректный формат - используем remind_of_yourself как fallback
+                        if remind_of_yourself:
+                            try:
+                                remind_dt = datetime.strptime(
+                                    remind_of_yourself, "%Y-%m-%d %H:%M:%S"
+                                )
+                                if remind_dt < threshold_date:
+                                    is_active = 0
+                            except (ValueError, TypeError):
+                                pass
+                elif remind_of_yourself:
+                    # Нет сообщений, но есть remind_of_yourself - используем его
+                    try:
+                        remind_dt = datetime.strptime(
+                            remind_of_yourself, "%Y-%m-%d %H:%M:%S"
+                        )
+                        if remind_dt < threshold_date:
+                            is_active = 0
+                    except (ValueError, TypeError):
+                        # Некорректный формат - считаем активным (новый пользователь)
+                        pass
+                # Если нет ни сообщений, ни remind_of_yourself - считаем активным (новый пользователь)
+
+                # Если активность изменилась, добавляем в список для обновления
+                if current_is_active != is_active:
+                    updates_to_commit.append((is_active, user_id))
+                    logger.debug(
+                        f"USER{user_id}: активность изменилась {current_is_active} -> {is_active}"
+                    )
+
+                # Пропускаем неактивных пользователей
+                if not is_active:
+                    logger.debug(
+                        f"USER{user_id}: неактивен (последнее сообщение: {last_message_time})"
+                    )
+                    continue
 
             # Парсим список времен напоминаний
             try:
@@ -568,6 +656,16 @@ async def get_past_dates():
                         f"USER{user_id}: ошибка при обработке времени {reminder_time}: {e}"
                     )
                     continue
+
+        # Обновляем флаги is_active для всех пользователей, у которых изменилась активность
+        if updates_to_commit:
+            for is_active_value, user_id in updates_to_commit:
+                await db.execute(
+                    "UPDATE conversations SET is_active = ? WHERE id = ?",
+                    (is_active_value, user_id),
+                )
+            await db.commit()
+            logger.debug(f"Обновлено флагов is_active: {len(updates_to_commit)}")
 
     return past_user_ids
 

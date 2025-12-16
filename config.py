@@ -45,6 +45,7 @@ DELAYED_REMINDERS_MINUTES = int(os.environ.get("DELAYED_REMINDERS_MINUTES") or "
 TIMEZONE_OFFSET = int(os.environ.get("TIMEZONE_OFFSET") or "3")
 FROM_TIME = int(os.environ.get("FROM_TIME") or "9")
 TO_TIME = int(os.environ.get("TO_TIME") or "23")
+INACTIVE_USER_DAYS = int(os.environ.get("INACTIVE_USER_DAYS") or "7")  # Количество дней неактивности для отключения напоминаний
 
 
 # Загрузка промптов и сообщений
