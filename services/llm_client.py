@@ -26,6 +26,8 @@ async def send_request_to_openrouter(
     data = {"model": model, "messages": prompt}
 
     delay = 1
+    # HTTP статусы, для которых стоит делать retry (серверные ошибки и rate limit)
+    retryable_statuses = {429, 500, 502, 503, 504}
 
     for attempt in range(1, retries + 1):
         try:
@@ -33,14 +35,22 @@ async def send_request_to_openrouter(
                 aiohttp.ClientSession() as session,
                 session.post(url, headers=headers, data=json.dumps(data)) as response,
             ):
-                if response.status == 429:
-                    raise aiohttp.ClientResponseError(
-                        request_info=response.request_info,
-                        history=response.history,
-                        status=response.status,
-                        message="Too Many Requests",
-                        headers=response.headers,
+                # Для retryable статусов делаем retry
+                if response.status in retryable_statuses:
+                    if attempt < retries:
+                        logger.info(
+                            f"HTTP {response.status}, попытка {attempt}/{retries}. Жду {delay} сек..."
+                        )
+                        await asyncio.sleep(delay)
+                        delay *= backoff_factor
+                        continue
+                    # Это последняя попытка, логируем ошибку
+                    error_text = await response.text()
+                    logger.error(
+                        f"HTTP error after {retries} attempts: {response.status}, "
+                        f"message='{response.reason}'. Response: {error_text}"
                     )
+                    return None
 
                 response.raise_for_status()
                 response_text = await response.text()
@@ -63,21 +73,38 @@ async def send_request_to_openrouter(
                 return None
 
         except aiohttp.ClientResponseError as e:
-            if e.status == 429:
-                logger.warning(
-                    f"429 Too Many Requests, попытка {attempt}/{retries}. Жду {delay} сек..."
+            # Этот блок ловит ошибки от raise_for_status() для других статус-кодов
+            if attempt < retries:
+                logger.info(
+                    f"HTTP error, попытка {attempt}/{retries}: {e}. Жду {delay} сек..."
                 )
                 await asyncio.sleep(delay)
                 delay *= backoff_factor
             else:
-                logger.error(f"HTTP error: {e}")
+                logger.error(f"HTTP error after {retries} attempts: {e}")
                 return None
         except aiohttp.ClientError as e:
-            logger.error(f"Error sending request to OpenRouter: {e}")
-            return None
+            # Сетевые ошибки (включая TransferEncodingError, ConnectionResetError и т.д.)
+            if attempt < retries:
+                logger.info(
+                    f"Network error, попытка {attempt}/{retries}: {e}. Жду {delay} сек..."
+                )
+                await asyncio.sleep(delay)
+                delay *= backoff_factor
+            else:
+                logger.error(f"Error sending request to OpenRouter after {retries} attempts: {e}")
+                return None
         except json.JSONDecodeError as e:
-            logger.error(f"Error decoding JSON response: {e}")
-            return None
+            # JSON ошибки могут быть из-за неполного ответа при обрыве соединения
+            if attempt < retries:
+                logger.info(
+                    f"JSON decode error, попытка {attempt}/{retries}: {e}. Жду {delay} сек..."
+                )
+                await asyncio.sleep(delay)
+                delay *= backoff_factor
+            else:
+                logger.error(f"Error decoding JSON response after {retries} attempts: {e}")
+                return None
 
     return None
 
@@ -137,7 +164,9 @@ async def send_image_to_vision_model(
         ],
     }
 
-    last_error = None
+    # HTTP статусы, для которых стоит делать retry (серверные ошибки и rate limit)
+    retryable_statuses = {400, 429, 500, 502, 503, 504}
+    delay = retry_delay
 
     for attempt in range(1, retries + 1):
         try:
@@ -145,22 +174,21 @@ async def send_image_to_vision_model(
                 aiohttp.ClientSession() as session,
                 session.post(url, headers=headers, data=json.dumps(data)) as response,
             ):
-                # Для ошибок 400 и 429 делаем retry
-                if response.status in (400, 429):
-                    error_text = await response.text()
-                    last_error = f"{response.status}, message='{response.reason}', url='{url}'"
-                    
+                # Для retryable статусов делаем retry
+                if response.status in retryable_statuses:
                     if attempt < retries:
-                        logger.warning(
+                        logger.info(
                             f"Vision model HTTP {response.status}, попытка {attempt}/{retries}. "
-                            f"Жду {retry_delay} сек..."
+                            f"Жду {delay} сек..."
                         )
-                        await asyncio.sleep(retry_delay)
+                        await asyncio.sleep(delay)
+                        delay *= 2  # Простой backoff для vision модели
                         continue
                     # Это последняя попытка, логируем ошибку
+                    error_text = await response.text()
                     logger.error(
-                        f"Vision model HTTP error after {retries} attempts: {last_error}. "
-                        f"Response: {error_text}"
+                        f"Vision model HTTP error after {retries} attempts: {response.status}, "
+                        f"message='{response.reason}'. Response: {error_text}"
                     )
                     return None
 
@@ -183,33 +211,44 @@ async def send_image_to_vision_model(
 
         except aiohttp.ClientResponseError as e:
             # Этот блок ловит ошибки от raise_for_status() для других статус-кодов
-            last_error = str(e)
             if attempt < retries:
-                logger.warning(
+                logger.info(
                     f"Vision model HTTP error, попытка {attempt}/{retries}: {e}. "
-                    f"Жду {retry_delay} сек..."
+                    f"Жду {delay} сек..."
                 )
-                await asyncio.sleep(retry_delay)
+                await asyncio.sleep(delay)
+                delay *= 2
             else:
                 logger.error(f"Vision model HTTP error after {retries} attempts: {e}")
                 return None
         except aiohttp.ClientError as e:
-            last_error = str(e)
+            # Сетевые ошибки (включая TransferEncodingError, ConnectionResetError и т.д.)
             if attempt < retries:
-                logger.warning(
-                    f"Vision model client error, попытка {attempt}/{retries}: {e}. "
-                    f"Жду {retry_delay} сек..."
+                logger.info(
+                    f"Vision model network error, попытка {attempt}/{retries}: {e}. "
+                    f"Жду {delay} сек..."
                 )
-                await asyncio.sleep(retry_delay)
+                await asyncio.sleep(delay)
+                delay *= 2
             else:
                 logger.error(
                     f"Error sending image to OpenRouter (vision model) after {retries} attempts: {e}"
                 )
                 return None
         except json.JSONDecodeError as e:
-            # JSON ошибки обычно не имеет смысла повторять
-            logger.error(f"Error decoding JSON response (vision model): {e}")
-            return None
+            # JSON ошибки могут быть из-за неполного ответа при обрыве соединения
+            if attempt < retries:
+                logger.info(
+                    f"Vision model JSON decode error, попытка {attempt}/{retries}: {e}. "
+                    f"Жду {delay} сек..."
+                )
+                await asyncio.sleep(delay)
+                delay *= 2
+            else:
+                logger.error(
+                    f"Error decoding JSON response (vision model) after {retries} attempts: {e}"
+                )
+                return None
 
     return None
 
