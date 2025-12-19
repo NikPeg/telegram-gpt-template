@@ -250,6 +250,9 @@ async def cmd_stats(message: types.Message):
             )
 
             try:
+                import aiosqlite
+
+                from database import DATABASE_NAME
                 all_user_ids = await Conversation.get_ids_from_table()
                 # Фильтруем только личных пользователей (положительные ID)
                 user_ids = [uid for uid in all_user_ids if uid > 0]
@@ -304,9 +307,7 @@ async def cmd_stats(message: types.Message):
                         continue
 
                 # ========== ПРОВЕРКА ГРУППОВЫХ ЧАТОВ ==========
-                import aiosqlite
-
-                from database import DATABASE_NAME, ChatVerification
+                from database import ChatVerification
 
                 async with aiosqlite.connect(DATABASE_NAME) as db:
                     cursor = await db.execute(
@@ -349,7 +350,41 @@ async def cmd_stats(message: types.Message):
                         )
                         continue
 
-                # Формируем отчет по подпискам
+                # Получаем статистику активности из БД
+                async with aiosqlite.connect(DATABASE_NAME) as db:
+                    # Статистика для личных пользователей (id > 0)
+                    cursor = await db.execute(
+                        """
+                        SELECT
+                            COUNT(*) as total,
+                            SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
+                            SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
+                        FROM conversations
+                        WHERE id > 0
+                        """
+                    )
+                    user_activity = await cursor.fetchone()
+
+                    # Статистика для групповых чатов (id < 0)
+                    cursor = await db.execute(
+                        """
+                        SELECT
+                            COUNT(*) as total,
+                            SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
+                            SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
+                        FROM conversations
+                        WHERE id < 0
+                        """
+                    )
+                    chat_activity = await cursor.fetchone()
+
+                user_active = user_activity[1] or 0
+                user_inactive = user_activity[2] or 0
+
+                chat_active = chat_activity[1] or 0
+                chat_inactive = chat_activity[2] or 0
+
+                # Формируем отчет по подпискам с активностью
                 total_checked = len(user_ids) + len(chat_verifications)
                 total_subscribed = subscribed_count + chat_subscribed_count
                 total_not_subscribed = not_subscribed_count + chat_not_subscribed_count
@@ -359,10 +394,16 @@ async def cmd_stats(message: types.Message):
                     f"👤 Личные пользователи:\n"
                     f"  ✅ Подписаны: {subscribed_count}\n"
                     f"  ❌ Не подписаны: {not_subscribed_count}\n"
-                    f"  🔄 Отписались: {unsubscribed_count}\n\n"
+                    f"  🔄 Отписались: {unsubscribed_count}\n"
+                    f"  📊 Активность (по БД):\n"
+                    f"    ✅ Активны: {user_active}\n"
+                    f"    ❌ Неактивны: {user_inactive}\n\n"
                     f"💬 Групповые чаты:\n"
                     f"  ✅ Верифицированы: {chat_subscribed_count}\n"
-                    f"  ❌ Не верифицированы: {chat_not_subscribed_count}\n\n"
+                    f"  ❌ Не верифицированы: {chat_not_subscribed_count}\n"
+                    f"  📊 Активность (по БД):\n"
+                    f"    ✅ Активны: {chat_active}\n"
+                    f"    ❌ Неактивны: {chat_inactive}\n\n"
                     f"📊 Итого:\n"
                     f"  ✅ Подписаны/верифицированы: {total_subscribed}\n"
                     f"  ❌ Не подписаны: {total_not_subscribed}\n"
