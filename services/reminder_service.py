@@ -12,6 +12,7 @@ from aiogram.exceptions import TelegramForbiddenError
 import database
 from config import (
     DEFAULT_PROMPT,
+    FEEDBACK_FORM_URL,
     REMINDER_CHECK_INTERVAL,
     REMINDER_PROMPTS,
     TIMEZONE_OFFSET,
@@ -41,6 +42,7 @@ USER_PROMPTS_BY_TYPE = {
     "how_are_you": "Привет! Спроси у меня как у меня дела",
     "compliment": "Привет! Поддержи меня и скажи что-нибудь приятное",
     "plans": "Привет! Спроси у меня про мои планы",
+    "feedback": "Привет! Спроси у меня обратную связь о том, как мне общаться с тобой",
 }
 
 
@@ -80,6 +82,19 @@ async def send_reminder_to_user(user_id: int):
     reminder_content = reminder_prompt.replace("{CURRENTDATE}", current_date)
     reminder_content = reminder_content.replace("{WEEKDAY}", weekday)
     reminder_content = reminder_content.replace("{USERNAME}", username_replacement)
+    
+    # Обрабатываем плейсхолдер FEEDBACK_LINK для типа feedback
+    if reminder_type == "feedback":
+        if FEEDBACK_FORM_URL:
+            # Если есть ссылка на форму, добавляем её в промпт
+            feedback_link_text = f"Ссылка на гугл форму: {FEEDBACK_FORM_URL}"
+            reminder_content = reminder_content.replace("FEEDBACK_LINK", feedback_link_text)
+        else:
+            # Если ссылки нет, просто убираем плейсхолдер
+            reminder_content = reminder_content.replace("FEEDBACK_LINK", "")
+    else:
+        # Для других типов убираем плейсхолдер если он есть
+        reminder_content = reminder_content.replace("FEEDBACK_LINK", "")
 
     # Заменяем плейсхолдеры в DEFAULT_PROMPT
     default_content = DEFAULT_PROMPT.replace("{CURRENTDATE}", current_date)
@@ -101,6 +116,9 @@ async def send_reminder_to_user(user_id: int):
         user_prompt = USER_PROMPTS_BY_TYPE.get(
             reminder_type, "Привет! Напомни мне о себе"
         )
+        # Для типа feedback добавляем ссылку на форму если она есть
+        if reminder_type == "feedback" and FEEDBACK_FORM_URL:
+            user_prompt = f"{user_prompt}. Расскажи или пройди опрос: {FEEDBACK_FORM_URL}"
         prompt_for_request.append({"role": "user", "content": user_prompt})
 
     # Логируем промпт перед отправкой

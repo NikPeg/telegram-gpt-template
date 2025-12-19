@@ -64,6 +64,9 @@ else:
 # Интервал проверки напоминаний (в секундах)
 REMINDER_CHECK_INTERVAL = int(os.environ.get("REMINDER_CHECK_INTERVAL") or "900")  # По умолчанию 15 минут (900 секунд)
 
+# Ссылка на форму обратной связи (опционально)
+FEEDBACK_FORM_URL = os.environ.get("FEEDBACK_FORM_URL", "")
+
 
 # Загрузка промптов и сообщений
 with open("config/prompts.json", encoding="utf-8") as f:
