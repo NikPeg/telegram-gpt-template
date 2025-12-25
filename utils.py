@@ -624,6 +624,25 @@ async def send_message_with_fallback(
                 f"CHAT{chat_id} - общее исправление не помогло: {e}. "
                 f"Отправляем без форматирования."
             )
+            
+            # Отправляем в админский чат для отладки
+            try:
+                await bot.send_message(
+                    ADMIN_CHAT,
+                    f"⚠️ MARKDOWN FIX FAILED для CHAT{chat_id}\n"
+                    f"Ошибка: {e}\n\n"
+                    f"=== ОРИГИНАЛЬНЫЙ ТЕКСТ (до исправлений) ==="
+                )
+                await bot.send_message(ADMIN_CHAT, text, parse_mode=None)
+                
+                await bot.send_message(
+                    ADMIN_CHAT,
+                    "=== ТЕКСТ ПОСЛЕ ВСЕХ ИСПРАВЛЕНИЙ ==="
+                )
+                await bot.send_message(ADMIN_CHAT, fixed_text, parse_mode=None)
+            except Exception as admin_err:
+                logger.error(f"Не удалось отправить отладочную информацию в админский чат: {admin_err}")
+            
             kwargs.pop("parse_mode", None)
             return await bot.send_message(chat_id=chat_id, text=text, **kwargs)
         except TelegramForbiddenError:
