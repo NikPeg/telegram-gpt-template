@@ -111,7 +111,7 @@ CREATE TABLE chat_verifications (
 
 Проверить структуру таблицы:
 ```bash
-docker-compose exec empathy-ai-bot python -c "
+docker-compose exec telegram-gpt python -c "
 import asyncio
 import aiosqlite
 

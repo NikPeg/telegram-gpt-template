@@ -11,10 +11,10 @@ from aiogram.exceptions import TelegramForbiddenError
 
 import database
 from config import (
-    DEFAULT_PROMPT,
     FEEDBACK_FORM_URL,
     REMINDER_CHECK_INTERVAL,
     REMINDER_PROMPTS,
+    SYSTEM_PROMPT,
     TIMEZONE_OFFSET,
     logger,
 )
@@ -96,8 +96,8 @@ async def send_reminder_to_user(user_id: int):
         # Для других типов убираем плейсхолдер если он есть
         reminder_content = reminder_content.replace("{FEEDBACK_LINK}", "")
 
-    # Заменяем плейсхолдеры в DEFAULT_PROMPT
-    default_content = DEFAULT_PROMPT.replace("{CURRENTDATE}", current_date)
+    # Заменяем плейсхолдеры в SYSTEM_PROMPT
+    default_content = SYSTEM_PROMPT.replace("{CURRENTDATE}", current_date)
     default_content = default_content.replace("{USERNAME}", username_replacement)
 
     # Формируем финальный промпт: системные промпты ПЕРВЫМИ, затем история сообщений

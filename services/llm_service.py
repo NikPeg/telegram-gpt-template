@@ -11,8 +11,8 @@ import cv2
 import telegramify_markdown
 
 from config import (
-    DEFAULT_PROMPT,
     FULL_LEVEL,
+    SYSTEM_PROMPT,
     logger,
 )
 from database import Conversation
@@ -68,7 +68,7 @@ async def get_llm_response(
     current_date = datetime.now(timezone(timedelta(hours=3))).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
-    system_content = DEFAULT_PROMPT.replace("{CURRENTDATE}", current_date)
+    system_content = SYSTEM_PROMPT.replace("{CURRENTDATE}", current_date)
 
     # Добавляем имя пользователя/чата если оно известно
     if conversation.name:
@@ -353,7 +353,7 @@ async def process_user_video(
         current_date = datetime.now(timezone(timedelta(hours=3))).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
-        system_content = DEFAULT_PROMPT.replace("{CURRENTDATE}", current_date)
+        system_content = SYSTEM_PROMPT.replace("{CURRENTDATE}", current_date)
 
         # Добавляем имя пользователя/чата если оно известно
         if conversation.name:

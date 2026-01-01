@@ -48,7 +48,7 @@
 
 ```bash
 # На сервере добавьте в crontab
-0 3 * * * docker exec empathy-ai-bot sqlite3 /data/users.db .dump > /opt/empathy-ai-bot/backups/backup-$(date +\%Y\%m\%d).sql
+0 3 * * * docker exec telegram-gpt sqlite3 /data/users.db .dump > /opt/telegram-gpt/backups/backup-$(date +\%Y\%m\%d).sql
 ```
 
 ### Ротация бэкапов
@@ -57,7 +57,7 @@
 
 ```bash
 # Удалять бэкапы старше 30 дней
-0 4 * * * find /opt/empathy-ai-bot/backups/ -name "backup-*.sql" -mtime +30 -delete
+0 4 * * * find /opt/telegram-gpt/backups/ -name "backup-*.sql" -mtime +30 -delete
 ```
 
 ### Хранение бэкапов
@@ -78,7 +78,7 @@ sudo apt-get install s3cmd
 s3cmd --configure
 
 # Загружайте бэкапы
-0 5 * * * s3cmd put /opt/empathy-ai-bot/backups/backup-$(date +\%Y\%m\%d).sql s3://your-bucket/backups/
+0 5 * * * s3cmd put /opt/telegram-gpt/backups/backup-$(date +\%Y\%m\%d).sql s3://your-bucket/backups/
 ```
 
 ---
@@ -130,7 +130,7 @@ MODEL=anthropic/claude-3.5-sonnet
 docker image prune -a -f
 
 # Удалить все кроме текущего
-docker images | grep empathy-ai-bot | grep -v latest | awk '{print $3}' | xargs docker rmi
+docker images | grep telegram-gpt | grep -v latest | awk '{print $3}' | xargs docker rmi
 ```
 
 **Настройте автоматическую очистку:**
@@ -156,11 +156,11 @@ docker images | grep empathy-ai-bot | grep -v latest | awk '{print $3}' | xargs 
 
 ```bash
 # Ограничьте доступ к данным
-chmod 700 /opt/empathy-ai-bot/data
-chmod 600 /opt/empathy-ai-bot/data/users.db
+chmod 700 /opt/telegram-gpt/data
+chmod 600 /opt/telegram-gpt/data/users.db
 
 # Ограничьте доступ к логам
-chmod 700 /opt/empathy-ai-bot/logs
+chmod 700 /opt/telegram-gpt/logs
 ```
 
 ### Firewall
@@ -205,7 +205,7 @@ TELEGRAM_LOG_LEVEL=ERROR
 
 ```bash
 # Проверка критических ошибок каждый час
-0 * * * * grep "CRITICAL\|ERROR" /opt/empathy-ai-bot/logs/debug.log | tail -10 | mail -s "Bot Errors" admin@example.com
+0 * * * * grep "CRITICAL\|ERROR" /opt/telegram-gpt/logs/debug.log | tail -10 | mail -s "Bot Errors" admin@example.com
 ```
 
 📖 **[Подробнее о логировании →](logging.md)**
@@ -220,16 +220,16 @@ TELEGRAM_LOG_LEVEL=ERROR
 
 ```bash
 # Запустите второй контейнер
-docker run -d --name empathy-ai-bot-green \
+docker run -d --name telegram-gpt-green \
   --restart unless-stopped \
   --env-file .env \
-  -v /opt/empathy-ai-bot/data:/data \
-  cr.yandex/your-registry/empathy-ai-bot:latest
+  -v /opt/telegram-gpt/data:/data \
+  cr.yandex/your-registry/telegram-gpt:latest
 
 # После проверки переключитесь
-docker stop empathy-ai-bot-blue
-docker rm empathy-ai-bot-blue
-docker rename empathy-ai-bot-green empathy-ai-bot-blue
+docker stop telegram-gpt-blue
+docker rm telegram-gpt-blue
+docker rename telegram-gpt-green telegram-gpt-blue
 ```
 
 ### Staging окружение
@@ -283,16 +283,16 @@ staging.example.com
 
 ```bash
 # Соберите локально
-docker build -t empathy-ai-bot:test .
+docker build -t telegram-gpt:test .
 
 # Запустите локально
-docker run --env-file .env empathy-ai-bot:test
+docker run --env-file .env telegram-gpt:test
 ```
 
 **Просмотр размера образов:**
 
 ```bash
-docker images empathy-ai-bot --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+docker images telegram-gpt --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
 ```
 
 **Проверка использования ресурсов:**
@@ -305,7 +305,7 @@ df -h
 free -m
 
 # Docker статистика
-docker stats empathy-ai-bot --no-stream
+docker stats telegram-gpt --no-stream
 ```
 
 ### Checklist перед обновлением
@@ -335,7 +335,7 @@ docker stats empathy-ai-bot --no-stream
 
 ```bash
 # Yandex Cloud
-yc compute instance update empathy-ai-bot-server \
+yc compute instance update telegram-gpt-server \
   --memory 4GB \
   --cores 4
 ```

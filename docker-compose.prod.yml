@@ -1,7 +1,7 @@
 services:
-  empathy-ai-bot:
-    image: cr.yandex/${YC_REGISTRY_ID}/empathy-ai-bot:latest
-    container_name: empathy-ai-bot
+  telegram-gpt:
+    image: cr.yandex/${YC_REGISTRY_ID}/telegram-gpt:latest
+    container_name: telegram-gpt
     restart: unless-stopped
     network_mode: host
     env_file:

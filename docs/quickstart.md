@@ -5,7 +5,7 @@
 ```bash
 # 1. Клонируйте репозиторий
 git clone <repository-url>
-cd empathy-ai-bot
+cd telegram-gpt
 
 # 2. Создайте .env файл
 cp .env.example .env
@@ -47,7 +47,7 @@ docker-compose restart
 ```bash
 # 1. Клонируйте и настройте
 git clone <repository-url>
-cd empathy-ai-bot
+cd telegram-gpt
 cp .env.example .env
 nano .env  # Заполните токены
 

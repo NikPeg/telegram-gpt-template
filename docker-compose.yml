@@ -1,7 +1,7 @@
 services:
-  empathy-ai-bot:
+  telegram-gpt:
     build: .
-    container_name: empathy-ai-bot
+    container_name: telegram-gpt
     restart: unless-stopped
     env_file:
       - .env

@@ -39,7 +39,7 @@
 
 ### В GitHub:
 
-- 📦 Репозиторий проекта empathy-ai-bot
+- 📦 Репозиторий проекта telegram-gpt
 - 🔑 Права на добавление Secrets в репозиторий
 
 ---
@@ -50,7 +50,7 @@
 
 ```bash
 # Создайте реестр контейнеров
-yc container registry create --name empathy-ai-bot-registry
+yc container registry create --name telegram-gpt-registry
 
 # Получите ID реестра
 yc container registry list
@@ -96,7 +96,7 @@ yc config list | grep folder-id
 ```bash
 # Создайте VM с Docker
 yc compute instance create \
-  --name empathy-ai-bot-server \
+  --name telegram-gpt-server \
   --zone ru-central1-a \
   --network-interface subnet-name=default-ru-central1-a,nat-ip-version=ipv4 \
   --create-boot-disk image-folder-id=standard-images,image-family=ubuntu-2204-lts,size=20 \
@@ -105,7 +105,7 @@ yc compute instance create \
   --ssh-key ~/.ssh/id_rsa.pub
 
 # Получите IP адрес
-yc compute instance get empathy-ai-bot-server --format json | jq -r .network_interfaces[0].primary_v4_address.one_to_one_nat.address
+yc compute instance get telegram-gpt-server --format json | jq -r .network_interfaces[0].primary_v4_address.one_to_one_nat.address
 ```
 
 ### 5. Установка Docker на сервере
@@ -174,8 +174,8 @@ SSH на сервер и выполните:
 
 ```bash
 # Создайте директории для данных
-sudo mkdir -p /opt/empathy-ai-bot/data /opt/empathy-ai-bot/logs
-sudo chmod -R 755 /opt/empathy-ai-bot
+sudo mkdir -p /opt/telegram-gpt/data /opt/telegram-gpt/logs
+sudo chmod -R 755 /opt/telegram-gpt
 ```
 
 ### Настройка Docker для работы без sudo
@@ -225,10 +225,10 @@ git push origin main
 ssh ubuntu@<your_server_ip>
 
 # Проверьте статус контейнера
-docker ps | grep empathy-ai-bot
+docker ps | grep telegram-gpt
 
 # Посмотрите логи
-docker logs empathy-ai-bot
+docker logs telegram-gpt
 
 # Проверьте, что бот отвечает
 # Напишите боту в Telegram
@@ -242,26 +242,26 @@ docker logs empathy-ai-bot
 
 ```bash
 # Последние 50 строк
-docker logs --tail 50 empathy-ai-bot
+docker logs --tail 50 telegram-gpt
 
 # В реальном времени
-docker logs -f empathy-ai-bot
+docker logs -f telegram-gpt
 
 # Логи из файла
-ssh ubuntu@<your_server_ip> 'cat /opt/empathy-ai-bot/logs/debug.log | tail -50'
+ssh ubuntu@<your_server_ip> 'cat /opt/telegram-gpt/logs/debug.log | tail -50'
 ```
 
 ### Проверка статуса
 
 ```bash
 # Статус контейнера
-docker ps -a | grep empathy-ai-bot
+docker ps -a | grep telegram-gpt
 
 # Использование ресурсов
-docker stats empathy-ai-bot
+docker stats telegram-gpt
 
 # Информация о контейнере
-docker inspect empathy-ai-bot
+docker inspect telegram-gpt
 ```
 
 ### GitHub Actions логи
@@ -309,21 +309,21 @@ docker inspect empathy-ai-bot
 **Проблема:** Контейнер падает сразу после запуска
 
 **Решение:**
-1. Посмотрите логи: `docker logs empathy-ai-bot`
+1. Посмотрите логи: `docker logs telegram-gpt`
 2. Проверьте все Secrets — особенно `TG_TOKEN` и `LLM_TOKEN`
-3. Проверьте, что директории созданы: `ls -la /opt/empathy-ai-bot/`
+3. Проверьте, что директории созданы: `ls -la /opt/telegram-gpt/`
 
 ### Бот не отвечает
 
 **Проблема:** Контейнер работает, но бот молчит
 
 **Решение:**
-1. Проверьте логи бота: `docker logs empathy-ai-bot`
+1. Проверьте логи бота: `docker logs telegram-gpt`
 2. Проверьте `TG_TOKEN` — правильный ли токен
 3. Проверьте `LLM_TOKEN` и баланс на OpenRouter
 4. Проверьте переменные окружения в контейнере:
    ```bash
-   docker exec empathy-ai-bot env | grep -E 'TG_TOKEN|LLM_TOKEN'
+   docker exec telegram-gpt env | grep -E 'TG_TOKEN|LLM_TOKEN'
    ```
 
 ### База данных потеряна после деплоя
@@ -331,10 +331,10 @@ docker inspect empathy-ai-bot
 **Проблема:** После обновления бота база данных пустая
 
 **Решение:**
-- База сохраняется в volume `/opt/empathy-ai-bot/data`
+- База сохраняется в volume `/opt/telegram-gpt/data`
 - Убедитесь, что в deploy.sh правильно смонтирован volume:
   ```bash
-  -v /opt/empathy-ai-bot/data:/data
+  -v /opt/telegram-gpt/data:/data
   ```
 
 ### Workflow запускается, но ничего не происходит
@@ -367,13 +367,13 @@ docker inspect empathy-ai-bot
 
 ```bash
 # Проверьте статус контейнера
-docker ps | grep empathy-ai-bot
+docker ps | grep telegram-gpt
 
 # Проверьте логи
-docker logs --tail=50 empathy-ai-bot
+docker logs --tail=50 telegram-gpt
 
 # Проверьте использование ресурсов
-docker stats empathy-ai-bot --no-stream
+docker stats telegram-gpt --no-stream
 ```
 
 ### Проверка работоспособности бота
@@ -399,19 +399,19 @@ docker stats empathy-ai-bot --no-stream
 ssh ubuntu@<your_server_ip>
 
 # Остановите текущий контейнер
-docker stop empathy-ai-bot
-docker rm empathy-ai-bot
+docker stop telegram-gpt
+docker rm telegram-gpt
 
 # Посмотрите доступные образы
-docker images | grep empathy-ai-bot
+docker images | grep telegram-gpt
 
 # Запустите предыдущую версию
 docker run -d \
-  --name empathy-ai-bot \
+  --name telegram-gpt \
   --restart unless-stopped \
-  --env-file /opt/empathy-ai-bot/.env \
-  -v /opt/empathy-ai-bot/data:/data \
-  cr.yandex/<registry-id>/empathy-ai-bot:<старый-тег>
+  --env-file /opt/telegram-gpt/.env \
+  -v /opt/telegram-gpt/data:/data \
+  cr.yandex/<registry-id>/telegram-gpt:<старый-тег>
 ```
 
 ### Быстрый откат через GitHub

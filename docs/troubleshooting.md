@@ -32,7 +32,7 @@
 ps aux | grep "python main.py"
 
 # Docker
-docker ps | grep empathy
+docker ps | grep telegram
 ```
 
 **2. Проверьте правильность токена:**
@@ -48,7 +48,7 @@ cat .env | grep TG_TOKEN
 tail -50 logs/debug.log
 
 # Docker
-docker logs --tail=50 empathy-ai-bot
+docker logs --tail=50 telegram-gpt
 ```
 
 ### Решение
@@ -234,8 +234,8 @@ kill -9 <PID>
 docker-compose down
 
 # Принудительная остановка
-docker kill empathy-ai-bot
-docker rm empathy-ai-bot
+docker kill telegram-gpt
+docker rm telegram-gpt
 
 # Перезапуск
 docker-compose up -d
@@ -250,7 +250,7 @@ docker-compose up -d
 **Диагностика:**
 
 ```bash
-docker ps -a | grep empathy
+docker ps -a | grep telegram
 ```
 
 Если видите `Restarting (1)`, значит приложение падает при запуске.
@@ -259,7 +259,7 @@ docker ps -a | grep empathy
 
 ```bash
 # Проверьте логи
-docker logs --tail=100 empathy-ai-bot
+docker logs --tail=100 telegram-gpt
 
 # Частые причины:
 # 1. Неправильные токены в .env
@@ -481,7 +481,7 @@ df -h
 free -m
 
 # Docker статистика
-docker stats empathy-ai-bot
+docker stats telegram-gpt
 ```
 
 ### Тестовый запуск

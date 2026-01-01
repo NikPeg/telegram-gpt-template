@@ -33,6 +33,7 @@ logging.addLevelName(MESSAGES_LEVEL, "MESSAGES")
 # LLM конфигурация
 LLM_TOKEN = os.environ.get("LLM_TOKEN")
 VISION_MODEL = os.environ.get("VISION_MODEL", "google/gemini-2.0-flash-001")
+SYSTEM_PROMPT = os.environ.get("SYSTEM_PROMPT", "")
 
 # База данных
 DATABASE_NAME = os.environ.get("DATABASE_NAME")
@@ -71,7 +72,6 @@ FEEDBACK_FORM_URL = os.environ.get("FEEDBACK_FORM_URL", "")
 # Загрузка промптов и сообщений
 with open("config/prompts.json", encoding="utf-8") as f:
     PROMPTS = json.load(f)
-    DEFAULT_PROMPT = PROMPTS["DEFAULT_PROMPT"]
     REMINDER_PROMPTS = PROMPTS["REMINDER_PROMPTS"]  # Словарь с разными типами промптов
 
 with open("config/messages.json", encoding="utf-8") as f:
