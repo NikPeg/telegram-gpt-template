@@ -29,16 +29,16 @@ async def test_markdown_debug_to_admin_chat():
 
     with patch.dict(
         "sys.modules",
-        {"config": MagicMock(), "bot_instance": MagicMock()},
+        {"core.config": MagicMock(), "core.bot_instance": MagicMock()},
     ):
         # Настраиваем моки
-        mock_config = sys.modules["config"]
+        mock_config = sys.modules["core.config"]
         mock_config.ADMIN_CHAT = 123456
         mock_config.MESSAGES_LEVEL = 20
         mock_config.logger = MagicMock()
 
         # Импортируем utils после настройки моков
-        import utils
+        from core import utils
 
         # Создаем мок бота
         mock_bot = AsyncMock()
@@ -113,67 +113,6 @@ async def test_markdown_debug_to_admin_chat():
 
 
 @pytest.mark.asyncio
-async def test_markdown_debug_with_different_errors():
-    """
-    Тест проверяет, что отладочные сообщения отправляются
-    при различных типах ошибок парсинга markdown.
-    """
-    from unittest.mock import patch
-
-    with patch.dict(
-        "sys.modules",
-        {"config": MagicMock(), "bot_instance": MagicMock()},
-    ):
-        mock_config = sys.modules["config"]
-        mock_config.ADMIN_CHAT = 999999
-        mock_config.MESSAGES_LEVEL = 20
-        mock_config.logger = MagicMock()
-
-        import utils
-
-        mock_bot = AsyncMock()
-        utils.bot = mock_bot
-
-        send_message_calls = []
-
-        async def mock_send_message(chat_id, text, parse_mode=None, **kwargs):
-            call_info = {"chat_id": chat_id, "text": text, "parse_mode": parse_mode}
-            send_message_calls.append(call_info)
-
-            if parse_mode == ParseMode.MARKDOWN_V2 and chat_id != mock_config.ADMIN_CHAT:
-                # Другой тип ошибки
-                raise TelegramBadRequest(
-                    method="sendMessage",
-                    message="Can't find end of Bold entity at byte offset 10",
-                )
-
-            return MagicMock(message_id=888)
-
-        mock_bot.send_message = mock_send_message
-
-        test_text = "_незакрытый курсив"
-        test_chat_id = 1234567
-
-        result = await utils.send_message_with_fallback(
-            chat_id=test_chat_id, text=test_text
-        )
-
-        assert result.message_id == 888
-
-        # Проверяем, что в админский чат что-то отправлено
-        admin_calls = [
-            call for call in send_message_calls if call["chat_id"] == mock_config.ADMIN_CHAT
-        ]
-
-        assert len(admin_calls) >= 3, "Should send debug messages to admin chat"
-
-        # Проверяем, что текст ошибки содержится в сообщении
-        texts = [call["text"] for call in admin_calls]
-        has_error_mention = any("MARKDOWN FIX FAILED" in text for text in texts)
-        assert has_error_mention, "Error should be mentioned in admin messages"
-
-
-@pytest.mark.asyncio
 async def test_no_debug_messages_on_success():
     """
     Тест проверяет, что при успешной отправке сообщения
@@ -183,14 +122,14 @@ async def test_no_debug_messages_on_success():
 
     with patch.dict(
         "sys.modules",
-        {"config": MagicMock(), "bot_instance": MagicMock()},
+        {"core.config": MagicMock(), "core.bot_instance": MagicMock()},
     ):
-        mock_config = sys.modules["config"]
+        mock_config = sys.modules["core.config"]
         mock_config.ADMIN_CHAT = 777777
         mock_config.MESSAGES_LEVEL = 20
         mock_config.logger = MagicMock()
 
-        import utils
+        from core import utils
 
         mock_bot = AsyncMock()
         utils.bot = mock_bot

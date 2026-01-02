@@ -5,7 +5,7 @@
 ## Установка зависимостей
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements/requirements-dev.txt
 ```
 
 ## Запуск тестов

@@ -27,7 +27,7 @@ def log_prompt(chat_id: int, prompt: list[dict], prompt_type: str = "MESSAGE"):
     Args:
         chat_id: ID чата пользователя
         prompt: Список сообщений промпта
-        prompt_type: Тип промпта (MESSAGE или REMINDER)
+        prompt_type: Тип промпта
     """
     # Системные промпты без истории (DEBUG уровень)
     system_prompts = [msg for msg in prompt if msg.get("role") == "system"]

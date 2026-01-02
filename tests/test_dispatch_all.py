@@ -51,7 +51,7 @@ async def test_db():
         await db.commit()
 
     # Патчим DATABASE_NAME
-    import database
+    from core import database
 
     original_db = database.DATABASE_NAME
     database.DATABASE_NAME = test_db_name
@@ -206,5 +206,5 @@ async def test_get_ids_from_table_returns_all_users(test_db):
     # Проверяем, что получили всех пользователей
     assert len(all_ids) == 3, "Должны получить всех 3 пользователей"
     assert 55555 in all_ids, "User1 должен быть в списке"
-    assert 66666 in all_ids, "User2 (с выключенными напоминаниями) должен быть в списке"
+    assert 66666 in all_ids, "User2 должен быть в списке"
     assert 77777 in all_ids, "User3 должен быть в списке"

@@ -50,7 +50,7 @@ async def test_db():
         await db.commit()
 
     # Патчим DATABASE_NAME
-    import database
+    from core import database
 
     original_db = database.DATABASE_NAME
     database.DATABASE_NAME = test_db_name
