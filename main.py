@@ -6,6 +6,8 @@
 import asyncio
 import contextlib
 
+from aiogram.types import BotCommand
+
 import core.database as database
 from core.bot_instance import bot, dp
 from core.config import ADMIN_CHAT, add_telegram_handler, logger
@@ -23,6 +25,22 @@ from handlers import message_handlers  # noqa: F401
 # isort: on
 
 
+async def set_bot_commands():
+    """Устанавливает список команд бота в меню Telegram."""
+    commands = [
+        BotCommand(command="start", description="🚀 Информация о боте"),
+        BotCommand(command="help", description="💡 Справка по командам"),
+        BotCommand(
+            command="forget",
+            description="🔄 Сбросить историю диалога и начать общение с чистого листа",
+        ),
+        BotCommand(command="mute", description="🔕 Отключить напоминания"),
+    ]
+
+    await bot.set_my_commands(commands)
+    logger.info("Команды бота установлены в меню Telegram")
+
+
 async def main():
     """Главная функция запуска бота."""
     # Инициализация базы данных
@@ -30,6 +48,9 @@ async def main():
 
     # Применяем миграции
     await run_migrations()
+
+    # Устанавливаем команды бота в меню Telegram
+    await set_bot_commands()
 
     # Добавляем middleware для проверки подписки
     dp.message.middleware(SubscriptionMiddleware())

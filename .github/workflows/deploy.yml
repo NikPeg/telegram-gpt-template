@@ -97,7 +97,6 @@ jobs:
           MAX_CONTEXT: ${{ secrets.MAX_CONTEXT || '20' }}
           MAX_STORAGE: ${{ secrets.MAX_STORAGE || '100' }}
           FEEDBACK_FORM_URL: ${{ secrets.FEEDBACK_FORM_URL || '' }}
-          ADMIN_LIST: ${{ secrets.ADMIN_LIST || '' }}
           REQUIRED_CHANNELS: ${{ secrets.REQUIRED_CHANNELS || '' }}
           FILE_LOG_LEVEL: ${{ secrets.FILE_LOG_LEVEL || 'INFO' }}
           TELEGRAM_LOG_LEVEL: ${{ secrets.TELEGRAM_LOG_LEVEL || 'DISABLED' }}
@@ -108,7 +107,7 @@ jobs:
           host: ${{ secrets.YC_INSTANCE_IP }}
           username: ${{ secrets.YC_INSTANCE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: TG_TOKEN,LLM_TOKEN,ADMIN_CHAT,MODEL,DEBUG,MAX_CONTEXT,MAX_STORAGE,FEEDBACK_FORM_URL,ADMIN_LIST,REQUIRED_CHANNELS,FILE_LOG_LEVEL,TELEGRAM_LOG_LEVEL,YC_REGISTRY_ID,NEW_IMAGE,BACKUP_IMAGE
+          envs: TG_TOKEN,LLM_TOKEN,ADMIN_CHAT,MODEL,DEBUG,MAX_CONTEXT,MAX_STORAGE,FEEDBACK_FORM_URL,REQUIRED_CHANNELS,FILE_LOG_LEVEL,TELEGRAM_LOG_LEVEL,YC_REGISTRY_ID,NEW_IMAGE,BACKUP_IMAGE
           script: |
             set -e  # Остановка при ошибке
 
@@ -223,7 +222,6 @@ jobs:
                 echo "DEBUG=$DEBUG"
                 echo "MAX_CONTEXT=$MAX_CONTEXT"
                 echo "MAX_STORAGE=$MAX_STORAGE"
-                echo "ADMIN_LIST=$ADMIN_LIST"
                 echo "REQUIRED_CHANNELS=$REQUIRED_CHANNELS"
                 echo "FILE_LOG_LEVEL=$FILE_LOG_LEVEL"
                 echo "TELEGRAM_LOG_LEVEL=$TELEGRAM_LOG_LEVEL"
