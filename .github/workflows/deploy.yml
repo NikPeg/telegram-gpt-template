@@ -24,8 +24,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+          pip install -r requirements/requirements.txt
+          pip install -r requirements/requirements-dev.txt
 
       - name: Run linter
         run: ruff check .
@@ -93,7 +93,6 @@ jobs:
           LLM_TOKEN: ${{ secrets.LLM_TOKEN }}
           ADMIN_CHAT: ${{ secrets.ADMIN_CHAT }}
           MODEL: ${{ secrets.MODEL || 'google/gemini-2.0-flash-exp:free' }}
-          DEBUG: ${{ secrets.DEBUG || '0' }}
           MAX_CONTEXT: ${{ secrets.MAX_CONTEXT || '20' }}
           MAX_STORAGE: ${{ secrets.MAX_STORAGE || '100' }}
           FEEDBACK_FORM_URL: ${{ secrets.FEEDBACK_FORM_URL || '' }}
@@ -107,7 +106,7 @@ jobs:
           host: ${{ secrets.YC_INSTANCE_IP }}
           username: ${{ secrets.YC_INSTANCE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: TG_TOKEN,LLM_TOKEN,ADMIN_CHAT,MODEL,DEBUG,MAX_CONTEXT,MAX_STORAGE,FEEDBACK_FORM_URL,REQUIRED_CHANNELS,FILE_LOG_LEVEL,TELEGRAM_LOG_LEVEL,YC_REGISTRY_ID,NEW_IMAGE,BACKUP_IMAGE
+          envs: TG_TOKEN,LLM_TOKEN,ADMIN_CHAT,MODEL,MAX_CONTEXT,MAX_STORAGE,FEEDBACK_FORM_URL,REQUIRED_CHANNELS,FILE_LOG_LEVEL,TELEGRAM_LOG_LEVEL,YC_REGISTRY_ID,NEW_IMAGE,BACKUP_IMAGE
           script: |
             set -e  # Остановка при ошибке
 
@@ -219,7 +218,6 @@ jobs:
                 echo "LLM_TOKEN=$LLM_TOKEN"
                 echo "ADMIN_CHAT=$ADMIN_CHAT"
                 echo "MODEL=$MODEL"
-                echo "DEBUG=$DEBUG"
                 echo "MAX_CONTEXT=$MAX_CONTEXT"
                 echo "MAX_STORAGE=$MAX_STORAGE"
                 echo "REQUIRED_CHANNELS=$REQUIRED_CHANNELS"
