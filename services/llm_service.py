@@ -13,6 +13,7 @@ import telegramify_markdown
 from core.config import (
     FULL_LEVEL,
     SYSTEM_PROMPT,
+    TIMEZONE_OFFSET,
     logger,
 )
 from core.database import Conversation
@@ -65,7 +66,7 @@ async def get_llm_response(
     context_messages = await conversation.get_context_for_llm()
 
     # Формируем системный промпт с подстановкой данных
-    current_date = datetime.now(timezone(timedelta(hours=3))).strftime(
+    current_date = datetime.now(timezone(timedelta(hours=TIMEZONE_OFFSET))).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
     system_content = SYSTEM_PROMPT.replace("{CURRENTDATE}", current_date)
@@ -74,7 +75,7 @@ async def get_llm_response(
     if conversation.name:
         # Для чатов (id < 0) указываем "Название чата", для личных - "Имя собеседника"
         label = "Название чата" if chat_id < 0 else "Имя собеседника"
-        username_info = f"6. {label}: {conversation.name}"
+        username_info = f"- {label}: {conversation.name}"
         system_content = system_content.replace("{USERNAME}", username_info)
     else:
         system_content = system_content.replace("{USERNAME}", "")
@@ -350,7 +351,7 @@ async def process_user_video(
 
         context_messages = await conversation.get_context_for_llm()
 
-        current_date = datetime.now(timezone(timedelta(hours=3))).strftime(
+        current_date = datetime.now(timezone(timedelta(hours=TIMEZONE_OFFSET))).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
         system_content = SYSTEM_PROMPT.replace("{CURRENTDATE}", current_date)
@@ -359,7 +360,7 @@ async def process_user_video(
         if conversation.name:
             # Для чатов (id < 0) указываем "Название чата", для личных - "Имя собеседника"
             label = "Название чата" if chat_id < 0 else "Имя собеседника"
-            username_info = f"6. {label}: {conversation.name}"
+            username_info = f"- {label}: {conversation.name}"
             system_content = system_content.replace("{USERNAME}", username_info)
         else:
             system_content = system_content.replace("{USERNAME}", "")

@@ -33,8 +33,14 @@ logging.addLevelName(MESSAGES_LEVEL, "MESSAGES")
 # LLM конфигурация
 LLM_TOKEN = os.environ.get("LLM_TOKEN")
 VISION_MODEL = os.environ.get("VISION_MODEL", "google/gemini-2.0-flash-001")
-SYSTEM_PROMPT = os.environ.get("SYSTEM_PROMPT", "")
+SYSTEM_PROMPT = os.environ.get(
+    "SYSTEM_PROMPT",
+    "Ты - полезный AI-ассистент.\n\nКонтекст диалога:\n- Текущая дата и время: {CURRENTDATE}\n{USERNAME}"
+)
 DEFAULT_PROMPT = os.environ.get("DEFAULT_PROMPT", "")
+
+# Временная зона (смещение от UTC в часах)
+TIMEZONE_OFFSET = int(os.environ.get("TIMEZONE_OFFSET", "3"))
 
 # База данных
 DATABASE_NAME = os.environ.get("DATABASE_NAME")

@@ -99,6 +99,10 @@ docker-compose -f deployment/docker-compose.yml up -d
 - `MODEL` → `google/gemini-2.0-flash-exp:free`
 - `ADMIN_CHAT` → [@userinfobot](https://t.me/userinfobot)
 
+**Опциональные параметры:**
+- `SYSTEM_PROMPT` → Системный промпт для бота. По умолчанию: `"Ты - полезный AI-ассистент.\n\nКонтекст диалога:\n- Текущая дата и время: {CURRENTDATE}\n{USERNAME}"`
+- `TIMEZONE_OFFSET` → Смещение от UTC в часах. По умолчанию: `3`
+
 ### Без Docker?
 
 ```bash
