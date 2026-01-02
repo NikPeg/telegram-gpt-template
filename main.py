@@ -34,7 +34,6 @@ async def set_bot_commands():
             command="forget",
             description="🔄 Сбросить историю диалога и начать общение с чистого листа",
         ),
-        BotCommand(command="mute", description="🔕 Отключить напоминания"),
     ]
 
     await bot.set_my_commands(commands)

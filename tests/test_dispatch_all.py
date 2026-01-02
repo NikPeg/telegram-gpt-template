@@ -32,18 +32,9 @@ async def test_db():
             CREATE TABLE IF NOT EXISTS conversations (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
-                prompt JSON,
-                remind_of_yourself TEXT,
-                sub_lvl INTEGER,
-                sub_id TEXT,
-                sub_period INTEGER,
-                is_admin INTEGER,
                 active_messages_count INTEGER,
-                reminder_time TEXT DEFAULT '19:15',
-                reminder_weekdays TEXT DEFAULT '[]',
                 subscription_verified INTEGER,
-                referral_code TEXT DEFAULT NULL,
-                is_active INTEGER DEFAULT 1
+                referral_code TEXT DEFAULT NULL
             )
         """)
 
@@ -197,20 +188,16 @@ async def test_dispatch_all_removes_blocked_users(test_db):
 @pytest.mark.asyncio
 async def test_get_ids_from_table_returns_all_users(test_db):
     """
-    Тест проверяет, что get_ids_from_table возвращает всех пользователей,
-    независимо от статуса напоминаний.
+    Тест проверяет, что get_ids_from_table возвращает всех пользователей.
     """
-    # Создаем пользователей с разными настройками
-    user1 = Conversation(55555, name="User with reminders")
-    user1.remind_of_yourself = "2025-01-01 10:00:00"  # Напоминания включены
+    # Создаем пользователей
+    user1 = Conversation(55555, name="User 1")
     await user1.save_for_db()
 
-    user2 = Conversation(66666, name="User without reminders")
-    user2.remind_of_yourself = "0"  # Напоминания выключены
+    user2 = Conversation(66666, name="User 2")
     await user2.save_for_db()
 
-    user3 = Conversation(77777, name="Another user with reminders")
-    user3.remind_of_yourself = "2025-01-01 15:00:00"  # Напоминания включены
+    user3 = Conversation(77777, name="User 3")
     await user3.save_for_db()
 
     # Получаем всех пользователей

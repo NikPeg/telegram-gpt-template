@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 from datetime import UTC, datetime
 
@@ -27,110 +26,54 @@ class Conversation:
     Attributes:
         id: Идентификатор беседы (положительный для пользователей, отрицательный для чатов)
         name: Имя пользователя или название чата
-        prompt: Список промптов (для обратной совместимости, deprecated)
-        remind_of_yourself: Управление напоминаниями (NULL/0/timestamp)
-        sub_lvl: Уровень подписки
-        sub_id: ID подписки
-        sub_period: Период подписки
-        is_admin: Флаг администратора
-        active_messages_count: Количество активных сообщений в контексте
-        reminder_time: Время напоминания в формате HH:MM (МСК)
-        reminder_weekdays: Список дней недели для напоминаний (0=Понедельник, 6=Воскресенье)
-                          Если пустой список [], то напоминания во все дни
-        subscription_verified: Статус верификации подписки
+        active_messages_count: Количество активных сообщений в контексте (NULL = все, 0 = забыть, N = последние N)
+        subscription_verified: Статус верификации подписки (NULL = не проверялось, 0 = не подписан, 1 = подписан)
         referral_code: Реферальный код, по которому пользователь перешел в бота
-        is_active: Флаг активности пользователя (1 = активен, 0 = неактивен)
     """
 
     def __init__(
         self,
         id,
         name=None,
-        prompt=None,
-        remind_of_yourself=None,
-        sub_lvl=0,
-        sub_id=0,
-        sub_period=-1,
-        is_admin=0,
         active_messages_count=None,
-        reminder_time=None,
-        reminder_weekdays=None,
         subscription_verified=None,
         referral_code=None,
-        is_active=1,
     ):
-        if prompt is None:
-            prompt = []
         self.id = id
         self.name = name
-        self.prompt = prompt  # Оставляем для обратной совместимости
-        self.remind_of_yourself = remind_of_yourself  # NULL = не отправлялось, "0" = отключено, иначе timestamp
-        self.sub_lvl = sub_lvl
-        self.sub_id = sub_id
-        self.sub_period = sub_period
-        self.is_admin = is_admin
-        self.active_messages_count = (
-            active_messages_count  # NULL = все, 0 = забыть, N = последние N
-        )
-        self.reminder_time = reminder_time  # Время напоминания в формате HH:MM (МСК)
-        self.reminder_weekdays = (
-            reminder_weekdays  # Список дней недели (0=Пн, 6=Вс), [] = все дни
-        )
-        self.subscription_verified = subscription_verified  # NULL = не проверялось, 0 = не подписан, 1 = подписан
-        self.referral_code = referral_code  # Реферальный код для отслеживания источника регистрации
-        self.is_active = is_active  # 1 = активен (отвечал в течение INACTIVE_USER_DAYS дней), 0 = неактивен
+        self.active_messages_count = active_messages_count
+        self.subscription_verified = subscription_verified
+        self.referral_code = referral_code
 
     def __repr__(self):
-        return f"Conversation(id={self.id}, \n name={self.name}, \n prompt={self.prompt}, \n remind_of_yourself={self.remind_of_yourself}, \n sub_lvl={self.sub_lvl}, \n sub_id={self.sub_id}, \n sub_period={self.sub_period}, \n is_admin={self.is_admin})"
+        return f"Conversation(id={self.id}, name={self.name}, active_messages_count={self.active_messages_count}, subscription_verified={self.subscription_verified}, referral_code={self.referral_code})"
 
     async def get_from_db(self):
         async with aiosqlite.connect(DATABASE_NAME) as db:
             cursor = await db.cursor()
-            sql = "SELECT * FROM conversations WHERE id = ?"
+            sql = "SELECT id, name, active_messages_count, subscription_verified, referral_code FROM conversations WHERE id = ?"
             await cursor.execute(sql, (self.id,))
             row = await cursor.fetchone()
             if row:
                 self.id = row[0]
                 self.name = row[1]
-                self.prompt = json.loads(row[2])
-                self.remind_of_yourself = row[3]
-                self.sub_lvl = row[4]
-                self.sub_id = row[5]
-                self.sub_period = row[6]
-                self.is_admin = row[7]
-                self.active_messages_count = row[8] if len(row) > 8 else None
-                self.reminder_time = row[9] if len(row) > 9 else None
-                self.reminder_weekdays = (
-                    json.loads(row[10]) if len(row) > 10 and row[10] else []
-                )
-                self.subscription_verified = row[11] if len(row) > 11 else None
-                self.referral_code = row[12] if len(row) > 12 else None
-                self.is_active = row[13] if len(row) > 13 else 1
+                self.active_messages_count = row[2]
+                self.subscription_verified = row[3]
+                self.referral_code = row[4]
 
     async def __call__(self, user_id):
         async with aiosqlite.connect(DATABASE_NAME) as db:
             cursor = await db.cursor()
-            sql = "SELECT * FROM conversations WHERE id = ?"
+            sql = "SELECT id, name, active_messages_count, subscription_verified, referral_code FROM conversations WHERE id = ?"
             await cursor.execute(sql, (user_id,))
             row = await cursor.fetchone()
             if row:
                 return Conversation(
                     id=row[0],
                     name=row[1],
-                    prompt=json.loads(row[2]),
-                    remind_of_yourself=row[3],
-                    sub_lvl=row[4],
-                    sub_id=row[5],
-                    sub_period=row[6],
-                    is_admin=row[7],
-                    active_messages_count=row[8] if len(row) > 8 else None,
-                    reminder_time=row[9] if len(row) > 9 else None,
-                    reminder_weekdays=json.loads(row[10])
-                    if len(row) > 10 and row[10]
-                    else [],
-                    subscription_verified=row[11] if len(row) > 11 else None,
-                    referral_code=row[12] if len(row) > 12 else None,
-                    is_active=row[13] if len(row) > 13 else 1,
+                    active_messages_count=row[2],
+                    subscription_verified=row[3],
+                    referral_code=row[4],
                 )
             return None
 
@@ -146,24 +89,15 @@ class Conversation:
         async with aiosqlite.connect(DATABASE_NAME) as db:
             cursor = await db.cursor()
             sql_insert = """
-                        INSERT INTO conversations (id, name, prompt, remind_of_yourself, sub_lvl, sub_id, sub_period, is_admin, active_messages_count, reminder_time, reminder_weekdays, subscription_verified, referral_code, is_active)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO conversations (id, name, active_messages_count, subscription_verified, referral_code)
+                        VALUES (?, ?, ?, ?, ?)
                     """
             values = (
                 self.id,
                 self.name,
-                json.dumps(self.prompt),
-                self.remind_of_yourself,
-                self.sub_lvl,
-                self.sub_id,
-                self.sub_period,
-                self.is_admin,
                 self.active_messages_count,
-                self.reminder_time,
-                json.dumps(self.reminder_weekdays),
                 self.subscription_verified,
                 self.referral_code,
-                self.is_active,
             )
             await cursor.execute(sql_insert, values)
             await db.commit()
@@ -255,23 +189,14 @@ class Conversation:
             cursor = await db.cursor()
             sql_query = """
                 UPDATE conversations
-                SET name = ?, prompt = ?, remind_of_yourself = ?, sub_lvl = ?, sub_id = ?, sub_period = ?, is_admin = ?, active_messages_count = ?, reminder_time = ?, reminder_weekdays = ?, subscription_verified = ?, referral_code = ?, is_active = ?
+                SET name = ?, active_messages_count = ?, subscription_verified = ?, referral_code = ?
                 WHERE id = ?
             """
             values = (
                 self.name,
-                json.dumps(self.prompt),
-                self.remind_of_yourself,
-                self.sub_lvl,
-                self.sub_id,
-                self.sub_period,
-                self.is_admin,
                 self.active_messages_count,
-                self.reminder_time,
-                json.dumps(self.reminder_weekdays),
                 self.subscription_verified,
                 self.referral_code,
-                self.is_active,
                 self.id,
             )
             await cursor.execute(sql_query, values)
@@ -422,20 +347,11 @@ async def check_db():
             await cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS conversations (
-                    id INTEGER PRIMARY KEY,  --  ID is now the PRIMARY KEY and NOT AUTOINCREMENT
+                    id INTEGER PRIMARY KEY,
                     name TEXT,
-                    prompt JSON,
-                    remind_of_yourself TEXT,
-                    sub_lvl INTEGER,
-                    sub_id TEXT,
-                    sub_period INTEGER,
-                    is_admin INTEGER,
                     active_messages_count INTEGER,
-                    reminder_time TEXT DEFAULT '19:15',
-                    reminder_weekdays TEXT DEFAULT '[]',
                     subscription_verified INTEGER,
-                    referral_code TEXT DEFAULT NULL,
-                    is_active INTEGER DEFAULT 1
+                    referral_code TEXT DEFAULT NULL
                 )
                 """
             )

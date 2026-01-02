@@ -31,18 +31,9 @@ async def test_db():
             CREATE TABLE IF NOT EXISTS conversations (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
-                prompt JSON,
-                remind_of_yourself TEXT,
-                sub_lvl INTEGER,
-                sub_id TEXT,
-                sub_period INTEGER,
-                is_admin INTEGER,
                 active_messages_count INTEGER,
-                reminder_time TEXT DEFAULT '19:15',
-                reminder_weekdays TEXT DEFAULT '[]',
                 subscription_verified INTEGER,
-                referral_code TEXT DEFAULT NULL,
-                is_active INTEGER DEFAULT 1
+                referral_code TEXT DEFAULT NULL
             )
         """)
 

@@ -9,7 +9,6 @@ from aiogram.filters import Filter
 
 import core.database as database
 from core.config import ADMIN_CHAT, FULL_LEVEL, logger
-from core.database import Conversation
 
 
 class UserNotInDB(Filter):
@@ -18,21 +17,6 @@ class UserNotInDB(Filter):
     async def __call__(self, message: types.Message) -> bool:
         user_id = message.chat.id
         return not await database.user_exists(user_id)
-
-
-class UserHaveSubLevel(Filter):
-    """Фильтр для проверки уровня подписки пользователя."""
-
-    def __init__(self, required_sub_lvl: int):
-        self.required_sub_lvl = required_sub_lvl
-
-    async def __call__(self, message: types.Message) -> bool:
-        conversation = Conversation(message.chat.id)
-        await conversation.get_from_db()
-
-        if conversation:
-            return conversation.sub_lvl >= self.required_sub_lvl
-        return False
 
 
 class UserIsAdmin(Filter):

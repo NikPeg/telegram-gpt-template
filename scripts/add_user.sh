@@ -42,14 +42,9 @@ EXISTS=$(sqlite3 "$DB_PATH" "SELECT EXISTS(SELECT 1 FROM conversations WHERE id 
 if [ "$EXISTS" -eq 1 ]; then
     echo "ℹ️  $TYPE$USER_ID уже есть в базе"
 else
-    # Добавляем с:
-    # - name = NULL (обновится автоматически)
-    # - remind_of_yourself = NULL (напоминания ВКЛЮЧЕНЫ по умолчанию)
-    # - reminder_time = "19:15" (стандартное время)
-    # - reminder_weekdays = "[]" (все дни недели)
-    sqlite3 "$DB_PATH" "INSERT INTO conversations (id, name, prompt, remind_of_yourself, sub_lvl, sub_id, sub_period, is_admin, reminder_time, reminder_weekdays) VALUES ($USER_ID, NULL, '[]', NULL, 0, 0, -1, 0, '19:15', '[]');"
+    # Добавляем с минимальным набором полей
+    sqlite3 "$DB_PATH" "INSERT INTO conversations (id, name, active_messages_count, subscription_verified, referral_code) VALUES ($USER_ID, NULL, NULL, NULL, NULL);"
     echo "✅ $TYPE$USER_ID добавлен в базу"
     echo "   📝 Имя обновится автоматически при первом сообщении"
-    echo "   🔔 Напоминания ВКЛЮЧЕНЫ (время: 19:15 МСК)"
 fi
 

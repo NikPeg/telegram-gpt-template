@@ -211,7 +211,6 @@ async def cmd_forget(message: types.Message):
     )
     conversation = Conversation(message.chat.id)
     await conversation.get_from_db()
-    conversation.remind_of_yourself = "0"
     conversation.active_messages_count = 0  # Не передавать сообщения в контекст
     await conversation.update_in_db()
 

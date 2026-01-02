@@ -12,13 +12,9 @@
 |------|-----|----------|
 | `id` | INTEGER | Telegram chat ID (PRIMARY KEY) |
 | `name` | TEXT | Username пользователя или название чата |
-| `prompt` | JSON | История диалога (массив сообщений) |
-| `sub_lvl` | INTEGER | Уровень подписки |
-| `sub_id` | TEXT | ID подписки |
-| `sub_period` | INTEGER | Период подписки |
-| `is_admin` | INTEGER | Флаг администратора |
-| `subscription_verified` | INTEGER | Флаг верификации подписки на каналы |
-| `referral_code` | TEXT | Уникальный реферальный код пользователя |
+| `active_messages_count` | INTEGER | Количество активных сообщений в контексте (NULL = все, 0 = забыть, N = последние N) |
+| `subscription_verified` | INTEGER | Флаг верификации подписки на каналы (NULL = не проверялось, 0 = не подписан, 1 = подписан) |
+| `referral_code` | TEXT | Реферальный код, по которому пользователь перешел в бота |
 
 ### Таблица `messages`
 
@@ -120,9 +116,8 @@ sqlite3 data/users.db
 SELECT COUNT(*) FROM conversations;
 
 # Последние 10 диалогов
-SELECT id, name, datetime(remind_of_yourself) as next_reminder 
+SELECT id, name, active_messages_count
 FROM conversations 
-ORDER BY remind_of_yourself DESC 
 LIMIT 10;
 
 # Статистика сообщений по пользователю

@@ -57,11 +57,9 @@ python scripts/test_model.py
 
 **Параметры по умолчанию:**
 - `name`: NULL (автоматически обновится при первом сообщении)
-- `remind_of_yourself`: NULL (напоминания **включены**)
-- `reminder_time`: "19:15" (стандартное время напоминаний МСК)
-- `reminder_weekdays`: "[]" (все дни недели, пустой список = все дни)
-- `sub_lvl`: 0 (нет подписки)
-- `is_admin`: 0 (не администратор)
+- `active_messages_count`: NULL (все сообщения в контексте)
+- `subscription_verified`: NULL (подписка не проверялась)
+- `referral_code`: NULL (без реферального кода)
 
 **Что делает:**
 1. Проверяет формат ID (поддерживает отрицательные ID для чатов)
@@ -101,14 +99,14 @@ SELECT COUNT(*) FROM conversations WHERE id > 0;
 SELECT COUNT(*) FROM conversations WHERE id < 0;
 
 -- Список всех пользователей с именами
-SELECT id, name, remind_of_yourself FROM conversations;
+SELECT id, name, active_messages_count FROM conversations;
 
 -- Проверить конкретного пользователя
 SELECT * FROM conversations WHERE id = 7581829366;
 
 -- Добавить пользователя вручную
-INSERT INTO conversations (id, name, prompt, remind_of_yourself, sub_lvl, sub_id, sub_period, is_admin, reminder_time, reminder_weekdays)
-VALUES (7581829366, NULL, '[]', NULL, 0, 0, -1, 0, '19:15', '[]');
+INSERT INTO conversations (id, name, active_messages_count, subscription_verified, referral_code)
+VALUES (7581829366, NULL, NULL, NULL, NULL);
 
 -- Удалить пользователя
 DELETE FROM conversations WHERE id = 7581829366;
@@ -127,16 +125,9 @@ DELETE FROM messages WHERE user_id = 7581829366;
 |------|-----|----------|
 | `id` | INTEGER | ID пользователя (>0) или чата (<0) |
 | `name` | TEXT | Имя пользователя или название чата |
-| `prompt` | JSON | Список промптов (deprecated) |
-| `remind_of_yourself` | TEXT | NULL = включено, "0" = отключено, timestamp = последняя отправка |
-| `sub_lvl` | INTEGER | Уровень подписки |
-| `sub_id` | TEXT | ID подписки |
-| `sub_period` | INTEGER | Период подписки |
-| `is_admin` | INTEGER | Флаг администратора |
-| `active_messages_count` | INTEGER | Количество активных сообщений в контексте |
-| `reminder_time` | TEXT | Время напоминания в формате "HH:MM" (МСК) |
-| `reminder_weekdays` | TEXT | JSON массив дней недели [0-6], пустой [] = все дни |
-| `subscription_verified` | INTEGER | Статус верификации подписки на каналы |
+| `active_messages_count` | INTEGER | Количество активных сообщений в контексте (NULL = все, 0 = забыть, N = последние N) |
+| `subscription_verified` | INTEGER | Статус подписки (NULL = не проверялось, 0 = не подписан, 1 = подписан) |
+| `referral_code` | TEXT | Реферальный код, по которому пользователь перешел в бота |
 
 ### Таблица `messages`
 
