@@ -12,7 +12,7 @@ from aiogram.exceptions import (
     TelegramMigrateToChat,
 )
 
-from bot_instance import bot
+from core.bot_instance import bot
 from core.config import ADMIN_CHAT, MESSAGES_LEVEL, logger
 
 
@@ -652,4 +652,5 @@ async def send_message_with_fallback(
                 f"CHAT{chat_id} - не удалось отправить сообщение: {final_error}"
             )
             raise
+
 

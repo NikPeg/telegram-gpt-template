@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 
 import aiosqlite
 from dotenv import load_dotenv
@@ -175,7 +175,7 @@ class Conversation:
         Старые сообщения (больше MAX_STORAGE) автоматически удаляются.
         """
         # Получаем текущее время в UTC
-        current_time = datetime.now(timezone.utc)
+        current_time = datetime.now(UTC)
         timestamp = current_time.strftime("%Y-%m-%d %H:%M:%S")
 
         async with aiosqlite.connect(DATABASE_NAME) as db:

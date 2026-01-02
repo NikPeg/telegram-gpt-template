@@ -11,13 +11,13 @@ from aiogram.filters.command import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, ReplyKeyboardRemove
 
-from bot_instance import bot, dp
+from core.bot_instance import bot, dp
 from core.config import ADMIN_CHAT, MESSAGES, logger
 from core.database import Conversation
-from filters import UserIsAdmin
+from core.filters import UserIsAdmin
+from core.states import AdminDispatch, AdminDispatchAll
 from services.stats_service import generate_user_stats, get_top_active_users
 from services.subscription_service import is_user_subscribed_to_all
-from states import AdminDispatch, AdminDispatchAll
 
 
 @dp.message(AdminDispatch.input_text)
@@ -446,7 +446,6 @@ async def cmd_send_reminders(message: types.Message):
     у которых НЕ отключены напоминания.
     """
     from aiogram.exceptions import TelegramForbiddenError
-
     from services.reminder_service import send_reminder_to_user
 
     logger.info(f"Команда /send_reminders получена от администратора {message.chat.id}")

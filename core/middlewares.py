@@ -10,8 +10,8 @@ from aiogram.types import Message
 
 from core.config import ADMIN_CHAT, REQUIRED_CHANNELS, logger
 from core.database import ChatVerification, Conversation, user_exists
+from core.utils import is_private_chat
 from handlers.subscription_handlers import send_subscription_request
-from utils import is_private_chat
 
 
 class SubscriptionMiddleware(BaseMiddleware):
@@ -111,3 +111,4 @@ class SubscriptionMiddleware(BaseMiddleware):
 
         # Чат верифицирован, продолжаем обработку
         return await handler(event, data)
+

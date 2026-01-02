@@ -7,22 +7,20 @@ import asyncio
 import contextlib
 
 import core.database as database
+from core.bot_instance import bot, dp
+from core.config import ADMIN_CHAT, add_telegram_handler, logger
+from core.middlewares import SubscriptionMiddleware
 from migrations.migration_manager import run_migrations
+from services.subscription_service import subscription_check_loop
 
 # Импортируем все обработчики (чтобы они зарегистрировались)
 # ВАЖНО: порядок имеет значение! Сначала специфичные (команды), потом общие
-from bot_instance import bot, dp
-from core.config import ADMIN_CHAT, add_telegram_handler, logger
-
 # isort: off - не сортировать этот блок, порядок критичен!
 from handlers import user_handlers  # noqa: F401
 from handlers import subscription_handlers  # noqa: F401
 from handlers import admin_handlers  # noqa: F401
 from handlers import message_handlers  # noqa: F401
 # isort: on
-
-from middlewares import SubscriptionMiddleware
-from services.subscription_service import subscription_check_loop
 
 
 async def main():

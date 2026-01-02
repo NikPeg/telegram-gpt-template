@@ -7,9 +7,15 @@ import asyncio
 from aiogram import F, types
 from aiogram.exceptions import TelegramForbiddenError
 
-from bot_instance import bot, dp
+from core.bot_instance import bot, dp
 from core.config import ADMIN_CHAT, MESSAGES, logger
 from core.database import Conversation
+from core.utils import (
+    forward_to_debug,
+    keep_typing,
+    send_message_with_fallback,
+    should_respond_in_chat,
+)
 from services.llm_service import (
     get_llm_response,
     process_user_image,
@@ -17,12 +23,6 @@ from services.llm_service import (
     save_to_context_and_format,
 )
 from services.message_buffer import message_buffer
-from utils import (
-    forward_to_debug,
-    keep_typing,
-    send_message_with_fallback,
-    should_respond_in_chat,
-)
 
 
 def get_user_display_name(message: types.Message) -> str:

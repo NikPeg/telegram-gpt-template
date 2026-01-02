@@ -77,6 +77,7 @@ async def test_db():
 
     # Патчим DATABASE_NAME в обоих модулях
     import database
+
     import services.stats_service
 
     original_db = database.DATABASE_NAME

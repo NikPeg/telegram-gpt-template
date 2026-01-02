@@ -7,12 +7,12 @@ from aiogram.filters.command import Command
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
-from bot_instance import bot, dp
+from core.bot_instance import bot, dp
 from core.config import ADMIN_CHAT, MESSAGES, REQUIRED_CHANNELS, logger
 from core.database import Conversation, delete_chat_data
-from filters import OldMessage, UserNotInDB
+from core.filters import OldMessage, UserNotInDB
+from core.utils import forward_to_debug
 from handlers.subscription_handlers import send_subscription_request
-from utils import forward_to_debug
 
 
 @dp.message(OldMessage())
